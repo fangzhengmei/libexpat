@@ -6667,6 +6667,109 @@ START_TEST(test_big_tokens_scale_linearly) {
 }
 END_TEST
 
+/* Regression test for quadratic re-scanning of a growing unfinished token when
+   input is delivered one byte at a time.  Across exponentially growing sizes,
+   the ratio of bytes scanned over bytes pushed must stay bounded by a small
+   constant; if the work were super-linear this factor would keep growing with
+   the document size.  The three token classes covered are an unclosed
+   attribute, an unclosed comment and -- fed without a closing semicolon -- an
+   unfinished numeric character reference. */
+START_TEST(test_tiny_chunk_partial_tokens_stay_linear) {
+  // Only meaningful with the deferral heuristic enabled.
+  if (! g_reparseDeferralEnabledDefault) {
+    return;
+  }
+
+  // The optimized path only applies to tiny appends, i.e. chunks smaller than
+  // TINY_APPEND_CHUNK_BYTES in xmlparse.c.  Feeding single bytes always hits
+  // it, regardless of the (0..5) outer g_chunkSize iteration, because this
+  // test always issues its own single-byte XML_Parse() calls.
+  static const size_t fill_sizes[] = {
+      4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024, 1024 * 1024};
+
+  struct token_case {
+    const char *pre;
+    const char *post;
+    char fill_char;
+  };
+  const struct token_case cases[] = {
+      {"<r><a x='", "'></a></r>", 'a'}, // long attribute value
+      {"<r><!-- ", " --></r>", 'a'},     // long comment
+      {"<r>&#", "</r>", '1'},           // unfinished numeric character ref
+  };
+
+  // Doubling-driven rescans plus the buffer-pressure scans that cannot be
+  // deferred together stay below four times the number of input bytes.  A
+  // quadratic implementation would exceed this already at the larger sizes.
+  const double max_factor = 4.0;
+
+  for (int ci = 0; ci < (int)(sizeof(cases) / sizeof(cases[0])); ci++) {
+    double largest_factor = 0.0;
+    for (int si = 0; si < (int)(sizeof(fill_sizes) / sizeof(fill_sizes[0]));
+         si++) {
+      const size_t fill = fill_sizes[si];
+      const size_t capacity
+          = strlen(cases[ci].pre) + fill + strlen(cases[ci].post) + 1;
+      char *const document = malloc(capacity);
+      assert_true(document != NULL);
+
+      size_t length = 0;
+      length += (size_t)sprintf(document + length, "%s", cases[ci].pre);
+      memset(document + length, cases[ci].fill_char, fill);
+      length += fill;
+      length += (size_t)sprintf(document + length, "%s", cases[ci].post);
+
+      XML_Parser parser = XML_ParserCreate(NULL);
+      assert_true(parser != NULL);
+
+      g_bytesScanned = 0;
+      enum XML_Status status = XML_STATUS_OK;
+      size_t offset = 0;
+      while (offset < length) {
+        const size_t chunk = 1; // single-byte streaming
+        const XML_Bool is_final
+            = ((offset + chunk) == length) ? XML_TRUE : XML_FALSE;
+        status = XML_Parse(parser, document + offset, (int)chunk, is_final);
+        if (status != XML_STATUS_OK)
+          break;
+        offset += chunk;
+      }
+
+      // The character reference case never gets a closing semicolon, so the
+      // final buffer reports a token error; the attribute and comment cases
+      // close cleanly.  Both outcomes are deterministic and identical to the
+      // parser's behavior without the optimization.
+      if (cases[ci].fill_char == '1') {
+        assert_true(status == XML_STATUS_ERROR);
+        const enum XML_Error code = XML_GetErrorCode(parser);
+        assert_true((code == XML_ERROR_INVALID_TOKEN)
+                    || (code == XML_ERROR_UNCLOSED_TOKEN));
+      } else {
+        if (status != XML_STATUS_OK) {
+          xml_failure(parser);
+        }
+      }
+
+      const double factor = (double)g_bytesScanned / (double)length;
+      set_subtest("case=%d fill=%zu factor=%.3f", ci, fill, factor);
+      assert_true(g_bytesScanned > 0);
+      assert_true(factor <= max_factor);
+      if (factor > largest_factor)
+        largest_factor = factor;
+
+      XML_ParserFree(parser);
+      free(document);
+    }
+    // The measured factor has to settle at a small, constant value as the
+    // token grows rather than drifting upward, which is what a super-linear
+    // implementation would do.  Allow some slack only for the small fixed
+    // pre/post overhead around the shortest documents.
+    set_subtest("case=%d largest factor %.3f", ci, largest_factor);
+    assert_true(largest_factor <= max_factor);
+  }
+}
+END_TEST
+
 START_TEST(test_set_reparse_deferral) {
   const char *const pre = "<d>";
   const char *const start = "<x attr='";
@@ -7610,6 +7713,7 @@ make_basic_test_case(Suite *s) {
   tcase_add_test__if_xml_ge(tc_basic, test_nested_entity_suspend);
   tcase_add_test__if_xml_ge(tc_basic, test_nested_entity_suspend_2);
   tcase_add_test(tc_basic, test_big_tokens_scale_linearly);
+  tcase_add_test(tc_basic, test_tiny_chunk_partial_tokens_stay_linear);
   tcase_add_test(tc_basic, test_set_reparse_deferral);
   tcase_add_test(tc_basic, test_reparse_deferral_is_inherited);
   tcase_add_test(tc_basic, test_set_reparse_deferral_on_null_parser);

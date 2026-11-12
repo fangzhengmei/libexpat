@@ -260,6 +260,18 @@ static void copy_salt_to_sipkey(XML_Parser parser, struct sipkey *key);
 #define INIT_BLOCK_SIZE 1024
 #define INIT_BUFFER_SIZE 1024
 
+/* An input chunk smaller than this many bytes is treated as a "tiny append".
+   When an application keeps feeding such tiny chunks while an unfinished token
+   grows, the buffer-pressure safety valve would otherwise force a redundant
+   full re-scan of the pending region at every buffer reallocation boundary,
+   which makes one-byte streaming take quadratic time.  Tiny-append pressure
+   scans are deferred instead; sizeable chunks keep the original behavior so
+   that a fully buffered token is still forced through without any change to
+   buffer-growth bounds.  The value is deliberately small (1/16th of the
+   initial parse buffer) so ordinary, reasonably sized fill calls are never
+   classified as tiny appends. */
+#define TINY_APPEND_CHUNK_BYTES (INIT_BUFFER_SIZE / 16)
+
 #define EXPAND_SPARE 24
 
 typedef struct binding {
@@ -1236,10 +1248,14 @@ callProcessor(XML_Parser parser, const char *start, const char *end,
 
   if (parser->m_reparseDeferralEnabled
       && ! parser->m_parsingStatus.finalBuffer) {
-    // Heuristic: don't try to parse a partial token again until the amount of
-    // available data has increased significantly.
+    // Don't try to parse a partial token again until the amount of available
+    // data has increased significantly (here: at least doubled).
     const size_t had_before = parser->m_partialTokenBytesBefore;
-    // ...but *do* try anyway if we're close to causing a reallocation.
+    const bool doubled = (have_now >= 2 * had_before);
+
+    // ...but *do* try anyway if we're close to causing a reallocation, so that
+    // pending data cannot grow without bound and a token that is already fully
+    // buffered gets forced through promptly.
     size_t available_buffer
         = EXPAT_SAFE_PTR_DIFF(parser->m_bufferPtr, parser->m_buffer);
 #if XML_CONTEXT_BYTES > 0
@@ -1248,8 +1264,28 @@ callProcessor(XML_Parser parser, const char *start, const char *end,
     available_buffer
         += EXPAT_SAFE_PTR_DIFF(parser->m_bufferLim, parser->m_bufferEnd);
     // m_lastBufferRequestSize is never assigned a value < 0, so the cast is ok
-    const bool enough = (have_now >= 2 * had_before)
-                        || (parser->m_lastBufferRequestSize > available_buffer);
+    const bool buffer_pressure
+        = parser->m_lastBufferRequestSize > available_buffer;
+
+    // Honoring buffer pressure on every call forces a redundant full scan at
+    // every buffer reallocation boundary.  When an application feeds an
+    // unfinished token a few bytes at a time, the doubling rule scans the
+    // whole region, the buffer then grows to fit the next tiny chunk, and that
+    // chunk trips buffer pressure while the doubling threshold is still far
+    // away, causing another scan of essentially the same bytes.  Repeated at
+    // every doubling boundary this is what used to push one-byte streaming
+    // from roughly 2n up to roughly 5n bytes scanned.
+    //
+    // Such a pressure scan is only redundant while the region has not doubled
+    // and the application is appending tiny chunks; in that case deferring it
+    // leaves the work at the linear, doubling-dominated rate.  A sizeable
+    // chunk (anything at least TINY_APPEND_CHUNK_BYTES) always honors buffer
+    // pressure, so a token whose bytes are all buffered still completes on the
+    // next sizeable fill and all existing buffer-growth bounds are preserved.
+    const bool tiny_append
+        = parser->m_lastBufferRequestSize < TINY_APPEND_CHUNK_BYTES;
+    const bool enough
+        = doubled || (buffer_pressure && ! tiny_append);
 
     if (! enough) {
       *endPtr = start; // callers may expect this to be set
