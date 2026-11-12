@@ -49,6 +49,7 @@
 #  undef NDEBUG /* because test suite relies on assert(...) at the moment */
 #endif
 
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 
@@ -546,6 +547,209 @@ START_TEST(test_nsalloc_realloc_binding_uri) {
     fail("Parsing worked despite failing reallocation");
   else if (i == max_realloc_count)
     fail("Parsing failed at max reallocation count");
+}
+END_TEST
+
+START_TEST(test_nsalloc_binding_growth_oom_cleanup) {
+  const char *const short_uri
+      = "<doc xmlns='http://example.org/short/' />";
+  const char *const long_uri
+      = "<doc xmlns='http://example.org/"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/"
+        "' />";
+  const int max_realloc_count = 16;
+  int saw_failure = 0;
+  int i;
+
+  if (XML_Parse_SINGLE_BYTES(g_parser, short_uri, (int)strlen(short_uri),
+                             XML_TRUE)
+      != XML_STATUS_OK)
+    xml_failure(g_parser);
+
+  for (i = 0; i < max_realloc_count; ++i) {
+    set_subtest("reallocation %d", i);
+    assert_true(XML_ParserReset(g_parser, NULL) == XML_TRUE);
+
+    g_reallocation_count = i;
+    if (XML_Parse_SINGLE_BYTES(g_parser, long_uri, (int)strlen(long_uri),
+                               XML_TRUE)
+        != XML_STATUS_ERROR)
+      break;
+
+    saw_failure = 1;
+    g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
+    assert_true(XML_GetErrorCode(g_parser) == XML_ERROR_NO_MEMORY);
+
+    /* The failed growth attempt must leave a parser that can be reset and
+     * reused; the fixture teardown also checks that every allocation was
+     * released exactly once.
+     */
+    assert_true(XML_ParserReset(g_parser, NULL) == XML_TRUE);
+  }
+
+  g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
+  assert_true(saw_failure);
+  assert_true(i < max_realloc_count);
+
+  assert_true(XML_ParserReset(g_parser, NULL) == XML_TRUE);
+  assert_true(XML_Parse_SINGLE_BYTES(g_parser, short_uri,
+                                     (int)strlen(short_uri), XML_TRUE)
+              == XML_STATUS_OK);
+}
+END_TEST
+
+static void XMLCALL
+stop_on_character_data(void *userData, const XML_Char *s, int len) {
+  XML_Parser parser = (XML_Parser)userData;
+  (void)s;
+  (void)len;
+  assert_true(XML_StopParser(parser, XML_TRUE) == XML_STATUS_OK);
+}
+
+typedef struct {
+  XML_Parser parser;
+  void *parse_buffer;
+  const char *input_context;
+  int64_t input_offset;
+  uint64_t input_size;
+} SuspendedBufferData;
+
+static void XMLCALL
+stop_and_capture_input_context(void *userData, const XML_Char *s, int len) {
+  SuspendedBufferData *const data = (SuspendedBufferData *)userData;
+  int64_t offset = -1;
+  uint64_t size = 0;
+
+  data->input_context
+      = XML_GetInputContext64(data->parser, &offset, &size);
+  if (data->input_context != NULL) {
+    data->input_offset = offset;
+    data->input_size = size;
+    assert_true(offset >= 0);
+    assert_true((uint64_t)offset + (uint64_t)len <= size);
+    assert_true(memcmp(data->input_context + offset, s, (size_t)len) == 0);
+  }
+
+  assert_true(XML_StopParser(data->parser, XML_TRUE) == XML_STATUS_OK);
+}
+
+static int XMLCALL
+suspend_and_free_external_subparser(XML_Parser parser,
+                                    const XML_Char *context,
+                                    const XML_Char *base,
+                                    const XML_Char *systemId,
+                                    const XML_Char *publicId) {
+  const char *const text = "<child>suspended</child>";
+  XML_Parser child;
+  XML_ParsingStatus child_status;
+  XML_ParsingStatus parent_status;
+
+  (void)base;
+  (void)systemId;
+  (void)publicId;
+
+  child = XML_ExternalEntityParserCreate(parser, context, NULL);
+  assert_true(child != NULL);
+
+  XML_SetUserData(child, child);
+  XML_SetCharacterDataHandler(child, stop_on_character_data);
+
+  assert_true(XML_Parse(child, text, (int)strlen(text), XML_TRUE)
+              == XML_STATUS_SUSPENDED);
+
+  XML_GetParsingStatus(child, &child_status);
+  assert_true(child_status.parsing == XML_SUSPENDED);
+
+  XML_GetParsingStatus(parser, &parent_status);
+  assert_true(parent_status.parsing == XML_PARSING);
+
+  /* A suspended child remains owned by the external entity handler.  The
+   * handler may abandon it by freeing it; this must not touch the parent
+   * parser's parse state or free any parent-owned binding twice.
+   */
+  XML_ParserFree(child);
+
+  XML_GetParsingStatus(parser, &parent_status);
+  assert_true(parent_status.parsing == XML_PARSING);
+  return XML_STATUS_ERROR;
+}
+
+START_TEST(test_nsalloc_free_suspended_parser_and_buffer) {
+  const char *const text = "<doc>suspend me</doc>";
+  SuspendedBufferData data;
+  void *const buffer = XML_GetBuffer(g_parser, (int)strlen(text));
+  XML_ParsingStatus status;
+
+  assert_true(buffer != NULL);
+  memcpy(buffer, text, strlen(text));
+
+  data.parser = g_parser;
+  data.parse_buffer = buffer;
+  data.input_context = NULL;
+  data.input_offset = -1;
+  data.input_size = 0;
+
+  XML_SetUserData(g_parser, &data);
+  XML_SetCharacterDataHandler(g_parser, stop_and_capture_input_context);
+
+  assert_true(XML_ParseBuffer(g_parser, (int)strlen(text), XML_TRUE)
+              == XML_STATUS_SUSPENDED);
+
+  XML_GetParsingStatus(g_parser, &status);
+  assert_true(status.parsing == XML_SUSPENDED);
+  assert_true(status.finalBuffer == XML_TRUE);
+
+  /* The parser owns the buffer returned by XML_GetBuffer(), including while
+   * parsing is suspended.  XML_GetInputContext64() returns a pointer into
+   * that same library-owned allocation; it remains readable while the parser
+   * is suspended, but the application must not release either pointer.
+   * XML_ParserFree() has to release the allocation once.  ASan verifies that
+   * internal cleanup neither reuses freed memory nor frees it twice.
+   */
+  if (data.input_context != NULL) {
+    assert_true(data.input_context >= (const char *)data.parse_buffer);
+    assert_true(data.input_context + data.input_size
+                <= (const char *)data.parse_buffer + strlen(text));
+    assert_true(memcmp(data.input_context + data.input_offset, "suspend me",
+                       strlen("suspend me"))
+                == 0);
+  }
+
+  assert_true(XML_GetBuffer(g_parser, 1) == NULL);
+  assert_true(XML_GetErrorCode(g_parser) == XML_ERROR_SUSPENDED);
+
+  XML_ParserFree(g_parser);
+  g_parser = NULL;
+}
+END_TEST
+
+START_TEST(test_nsalloc_free_suspended_external_subparser) {
+  if (g_chunkSize != 0)
+    return;
+
+  const char *const text =
+      "<!DOCTYPE doc [<!ENTITY child SYSTEM 'child.xml'>]>"
+      "<doc>&child;</doc>";
+  XML_ParsingStatus status;
+
+  XML_SetExternalEntityRefHandler(g_parser,
+                                  suspend_and_free_external_subparser);
+
+  assert_true(XML_Parse(g_parser, text, (int)strlen(text), XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(g_parser)
+              == XML_ERROR_EXTERNAL_ENTITY_HANDLING);
+
+  XML_GetParsingStatus(g_parser, &status);
+  assert_true(status.parsing == XML_PARSING);
+
+  assert_true(XML_ParserReset(g_parser, NULL) == XML_TRUE);
+  XML_GetParsingStatus(g_parser, &status);
+  assert_true(status.parsing == XML_INITIALIZED);
+
+  assert_true(XML_Parse(g_parser, "<root/>", (int)strlen("<root/>"), XML_TRUE)
+              == XML_STATUS_OK);
 }
 END_TEST
 
@@ -1556,6 +1760,10 @@ make_nsalloc_test_case(Suite *s) {
   tcase_add_test(tc_nsalloc, test_nsalloc_realloc_attributes);
   tcase_add_test(tc_nsalloc, test_nsalloc_long_element);
   tcase_add_test(tc_nsalloc, test_nsalloc_realloc_binding_uri);
+  tcase_add_test(tc_nsalloc, test_nsalloc_binding_growth_oom_cleanup);
+  tcase_add_test(tc_nsalloc, test_nsalloc_free_suspended_parser_and_buffer);
+  tcase_add_test__if_xml_ge(tc_nsalloc,
+                            test_nsalloc_free_suspended_external_subparser);
   tcase_add_test(tc_nsalloc, test_nsalloc_realloc_long_prefix);
   tcase_add_test(tc_nsalloc, test_nsalloc_realloc_longer_prefix);
   tcase_add_test(tc_nsalloc, test_nsalloc_long_namespace);

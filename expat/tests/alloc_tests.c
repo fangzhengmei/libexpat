@@ -327,6 +327,53 @@ START_TEST(test_alloc_create_external_parser) {
 }
 END_TEST
 
+START_TEST(test_alloc_external_parser_create_oom_lifecycle) {
+  static const XML_Char context[] = {'e', 'n', 't', 'i', 't', 'y', '\0'};
+  const char *const text = "<root/>";
+  const int max_allocation_count = 64;
+  int saw_failure = 0;
+  int i;
+
+  for (i = 0; i < max_allocation_count; ++i) {
+    XML_Parser child;
+    XML_ParsingStatus parent_status;
+
+    set_subtest("allocation %d", i);
+    g_allocation_count = i;
+    child = XML_ExternalEntityParserCreate(g_parser, context, NULL);
+    g_allocation_count = ALLOC_ALWAYS_SUCCEED;
+
+    XML_GetParsingStatus(g_parser, &parent_status);
+    assert_true(parent_status.parsing == XML_INITIALIZED);
+    assert_true(parent_status.finalBuffer == XML_FALSE);
+
+    if (child == NULL) {
+      saw_failure = 1;
+      assert_true(XML_GetErrorCode(g_parser) == XML_ERROR_NONE);
+      continue;
+    }
+
+    assert_true(XML_Parse_SINGLE_BYTES(child, text, (int)strlen(text),
+                                       XML_TRUE)
+                == XML_STATUS_OK);
+    XML_ParserFree(child);
+    break;
+  }
+
+  assert_true(saw_failure);
+  assert_true(i < max_allocation_count);
+
+  /* A failed child creation must leave the parent usable and resettable. */
+  assert_true(XML_Parse_SINGLE_BYTES(g_parser, text, (int)strlen(text),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(XML_ParserReset(g_parser, NULL) == XML_TRUE);
+  assert_true(XML_Parse_SINGLE_BYTES(g_parser, text, (int)strlen(text),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+}
+END_TEST
+
 /* More external parser memory allocation testing */
 START_TEST(test_alloc_run_external_parser) {
   const char *text = "<?xml version='1.0' encoding='us-ascii'?>\n"
@@ -2432,6 +2479,7 @@ make_alloc_test_case(Suite *s) {
   tcase_add_test(tc_alloc, test_alloc_parse_pi_3);
   tcase_add_test(tc_alloc, test_alloc_parse_comment);
   tcase_add_test(tc_alloc, test_alloc_parse_comment_2);
+  tcase_add_test(tc_alloc, test_alloc_external_parser_create_oom_lifecycle);
   tcase_add_test__ifdef_xml_dtd(tc_alloc, test_alloc_create_external_parser);
   tcase_add_test__ifdef_xml_dtd(tc_alloc, test_alloc_run_external_parser);
   tcase_add_test__ifdef_xml_dtd(tc_alloc, test_alloc_dtd_copy_default_atts);
