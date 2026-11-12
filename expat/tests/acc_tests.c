@@ -506,6 +506,132 @@ START_TEST(test_amplification_reset_neutrality) {
 }
 END_TEST
 
+/* A parser reused after a document must start with zero consumed security
+ * counters, even when the previous document failed (here because it tripped
+ * the billion laughs protection).  This pins the per-document accounting
+ * boundary that parserResetDocumentState() has to establish. */
+START_TEST(test_accounting_counters_reset_after_failed_parse) {
+  // Speed up the test, chunk size expected to not matter in this test
+  if (g_chunkSize != 0)
+    return;
+
+  const char *const doc
+      = "<!DOCTYPE r [<!ENTITY e 'general entity'>]><r>&e;</r>";
+  const int docLen = (int)strlen(doc);
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  assert_true(XML_SetPropertyDouble(
+                  parser, XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, 1.0)
+              == XML_PROP_ERROR_NONE);
+  assert_true(XML_SetPropertyUInt64(
+                  parser, XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD, 0)
+              == XML_PROP_ERROR_NONE);
+
+  // First document fails and therefore leaves non-zero counters behind.
+  assert_true(XML_Parse_SINGLE_BYTES(parser, doc, docLen, XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_AMPLIFICATION_LIMIT_BREACH);
+  assert_true(testingAccountingGetCountBytesDirect(parser) > 0);
+
+  assert_true(XML_ParserReset(parser, NULL) == XML_STATUS_OK);
+
+  // The consumed counters belong to the discarded document and must be gone;
+  // a fresh, benign document then parses successfully from a clean budget.
+  assert_true(testingAccountingGetCountBytesDirect(parser) == 0);
+  assert_true(testingAccountingGetCountBytesIndirect(parser) == 0);
+
+  const char *const benign = "<r/>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, benign, (int)strlen(benign),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(testingAccountingGetCountBytesDirect(parser)
+              == (unsigned long long)strlen(benign));
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+/* XML_ParserReset() must keep the protection *configuration* (the limits the
+ * user chose) while dropping the consumed counters.  Pins the split between
+ * parserInitSecurityConfiguration() and parserResetDocumentState(). */
+START_TEST(test_accounting_limits_survive_reset) {
+  const float wantedAmplification = 7.5f;
+  const unsigned long long wantedThreshold = 4321;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  assert_true(XML_SetPropertyDouble(
+                  parser, XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION,
+                  (double)wantedAmplification)
+              == XML_PROP_ERROR_NONE);
+  assert_true(XML_SetPropertyUInt64(
+                  parser, XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD,
+                  wantedThreshold)
+              == XML_PROP_ERROR_NONE);
+
+  const char *const doc = "<r/>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, doc, (int)strlen(doc), XML_TRUE)
+              == XML_STATUS_OK);
+
+  assert_true(XML_ParserReset(parser, NULL) == XML_STATUS_OK);
+
+  double actualAmplification = 0.0;
+  uint64_t actualThreshold = 0;
+  assert_true(XML_GetPropertyDouble(
+                  parser, XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION,
+                  &actualAmplification)
+              == XML_PROP_ERROR_NONE);
+  assert_true(XML_GetPropertyUInt64(
+                  parser, XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD,
+                  &actualThreshold)
+              == XML_PROP_ERROR_NONE);
+  assert_true((float)actualAmplification == wantedAmplification);
+  assert_true(actualThreshold == wantedThreshold);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+/* An external entity sub-parser keeps its own zeroed counters because all
+ * accounting is rooted at the document's root parser.  The child therefore
+ * neither inherits an exhausted budget nor charges bytes into a private pool;
+ * parsing the entity must accumulate on the root parser instead. */
+START_TEST(test_accounting_subparser_uses_root_budget) {
+  const char *const doc = "<r/>";
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  // A non-NULL context marks an external general entity, whose content is
+  // accounted as indirect (i.e. expanded) bytes of the root document.
+  XML_Parser subparser
+      = XML_ExternalEntityParserCreate(parser, XCS("entity123"), NULL);
+  assert_true(subparser != NULL);
+
+  // The freshly created sub-parser starts from a clean, unconsumed budget.
+  assert_true(testingAccountingGetCountBytesDirect(subparser) == 0);
+  assert_true(testingAccountingGetCountBytesIndirect(subparser) == 0);
+
+  assert_true(XML_Parse_SINGLE_BYTES(subparser, doc, (int)strlen(doc),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+
+  // Bytes scanned by the child are charged to the shared root parser as
+  // indirect (expanded) bytes, never into a private budget of the child.
+  assert_true(testingAccountingGetCountBytesDirect(parser) == 0);
+  assert_true(testingAccountingGetCountBytesIndirect(parser)
+              == (unsigned long long)strlen(doc));
+  // The child's own counters stay untouched: it owns no budget of its own.
+  assert_true(testingAccountingGetCountBytesDirect(subparser) == 0);
+  assert_true(testingAccountingGetCountBytesIndirect(subparser) == 0);
+
+  XML_ParserFree(subparser);
+  XML_ParserFree(parser);
+}
+END_TEST
+
 #endif // XML_GE == 1
 
 void
@@ -523,6 +649,10 @@ make_accounting_test_case(Suite *s) {
   tcase_add_test__ifdef_xml_dtd(tc_accounting,
                                 test_amplification_isolated_external_parser);
   tcase_add_test(tc_accounting, test_amplification_reset_neutrality);
+  tcase_add_test(tc_accounting,
+                 test_accounting_counters_reset_after_failed_parse);
+  tcase_add_test(tc_accounting, test_accounting_limits_survive_reset);
+  tcase_add_test(tc_accounting, test_accounting_subparser_uses_root_budget);
 #else
   UNUSED_P(s);
 #endif /* XML_GE == 1 */

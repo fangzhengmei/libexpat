@@ -612,6 +612,32 @@ static XML_Parser parserCreate(const XML_Char *encodingName,
                                const XML_Char *nameSep, DTD *dtd,
                                XML_Parser parentParser);
 
+/* Resets the user-facing callback/handler configuration (handlers, userData,
+ * handlerArg).  Called once when a parser is created and again on every
+ * XML_ParserReset(); a freshly created external entity sub-parser instead
+ * inherits this configuration from its parent in
+ * XML_ExternalEntityParserCreate().  This is deliberately kept separate from
+ * the per-document parse state so that user configuration can never be
+ * confused with, or fail to clear together with, document data. */
+static void parserResetUserConfiguration(XML_Parser parser);
+
+/* Resets all state that belongs to a single document: parse position, open
+ * entities and tags, namespaces in flight, error code and, when XML_GE == 1,
+ * the consumed security/accounting counters.  Called on creation and on every
+ * XML_ParserReset(), so reusing a parser after a failed parse can never
+ * inherit stale entities, namespaces or an exhausted budget.  The configured
+ * protection thresholds themselves are owned by
+ * parserInitSecurityConfiguration() and are intentionally not touched here. */
+static void parserResetDocumentState(XML_Parser parser,
+                                     const XML_Char *encodingName);
+
+/* One-time initialization of the security/accounting configuration (debug
+ * levels, configured amplification factors and activation thresholds).  Only
+ * ever run while creating a parser, never on XML_ParserReset(), so explicit
+ * user configuration survives document reuse while the consumed counters are
+ * still cleared by parserResetDocumentState(). */
+static void parserInitSecurityConfiguration(XML_Parser parser);
+
 static void parserInit(XML_Parser parser, const XML_Char *encodingName,
                        bool isReset);
 
@@ -1496,14 +1522,15 @@ parserCreate(const XML_Char *encodingName,
 }
 
 static void
-parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
-  parser->m_processor = prologInitProcessor;
-  XmlPrologStateInit(&parser->m_prologState);
-  if (encodingName != NULL) {
-    parser->m_protocolEncodingName = copyString(encodingName, parser);
-  }
-  parser->m_curBase = NULL;
-  XmlInitEncoding(&parser->m_initEncoding, &parser->m_encoding, NULL);
+parserResetUserConfiguration(XML_Parser parser) {
+  /* User-facing handler callbacks and their arguments.  These describe how
+   * the application wants to be notified, not the document being parsed, so
+   * they live in their own reset group rather than next to parse state.
+   * Note that m_unknownEncodingHandler(Data) is intentionally NOT reset here
+   * (and is preserved across XML_ParserReset by documented contract); only the
+   * per-document unknown encoding runtime scratch state is cleared in
+   * parserResetDocumentState().
+   */
   parser->m_userData = NULL;
   parser->m_handlerArg = NULL;
   parser->m_startElementHandler = NULL;
@@ -1522,12 +1549,24 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_endNamespaceDeclHandler = NULL;
   parser->m_notStandaloneHandler = NULL;
   parser->m_externalEntityRefHandler = NULL;
-  parser->m_externalEntityRefHandlerArg = parser;
   parser->m_skippedEntityHandler = NULL;
   parser->m_elementDeclHandler = NULL;
   parser->m_attlistDeclHandler = NULL;
   parser->m_entityDeclHandler = NULL;
   parser->m_xmlDeclHandler = NULL;
+  // m_externalEntityRefHandlerArg defaults back to the parser itself; the
+  // special value "oldParser" is re-established explicitly when a sub-parser
+  // inherits its parent's configuration.
+  parser->m_externalEntityRefHandlerArg = parser;
+}
+
+static void
+parserResetDocumentState(XML_Parser parser, const XML_Char *encodingName) {
+  /* Everything below is owned by a single document and must be wiped both on
+   * creation and on XML_ParserReset() so that parser reuse cannot observe
+   * entities, namespaces, positions or budgets left behind by a previous
+   * (possibly failed) document.
+   */
   parser->m_bufferPtr = parser->m_buffer;
   parser->m_bufferEnd = parser->m_buffer;
   parser->m_parseEndByteIndex = 0;
@@ -1535,6 +1574,13 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_partialTokenBytesBefore = 0;
   parser->m_reparseDeferralEnabled = g_reparseDeferralEnabledDefault;
   parser->m_lastBufferRequestSize = 0;
+  parser->m_processor = prologInitProcessor;
+  XmlPrologStateInit(&parser->m_prologState);
+  if (encodingName != NULL) {
+    parser->m_protocolEncodingName = copyString(encodingName, parser);
+  }
+  parser->m_curBase = NULL;
+  XmlInitEncoding(&parser->m_initEncoding, &parser->m_encoding, NULL);
   parser->m_declElementType = NULL;
   parser->m_declAttributeId = NULL;
   parser->m_declEntity = NULL;
@@ -1559,6 +1605,8 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_tagStack = NULL;
   parser->m_inheritedBindings = NULL;
   parser->m_nSpecifiedAtts = 0;
+  // Unknown-encoding scratch data is per-document (allocated while resolving
+  // an encoding for this document); the registered handler itself persists.
   parser->m_unknownEncodingMem = NULL;
   parser->m_unknownEncodingConvert = NULL;
   parser->m_unknownEncodingRelease = NULL;
@@ -1578,25 +1626,50 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_hash_secret_salt_set = XML_FALSE;
 
 #if XML_GE == 1
+  // Consumed security/accounting counters are per-document and must start at
+  // zero for every document, including when a parser whose previous document
+  // tripped a limit is reset and reused.  The configured limits themselves are
+  // separate and are left untouched (see parserInitSecurityConfiguration).
   parser->m_accounting.countBytesDirect = 0;
   parser->m_accounting.countBytesIndirect = 0;
-  if (! isReset) {
-    parser->m_accounting.debugLevel
-        = getDebugLevel("EXPAT_ACCOUNTING_DEBUG", 0);
-    parser->m_accounting.maximumAmplificationFactor
-        = EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
-    parser->m_accounting.activationThresholdBytes
-        = EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
-  }
 
   parser->m_entity_stats.countEverOpened = 0;
   parser->m_entity_stats.currentDepth = 0;
   parser->m_entity_stats.maximumDepthSeen = 0;
-  if (! isReset)
-    parser->m_entity_stats.debugLevel = getDebugLevel("EXPAT_ENTITY_DEBUG", 0);
-#else
-  UNUSED_P(isReset);
 #endif
+}
+
+static void
+parserInitSecurityConfiguration(XML_Parser parser) {
+#if XML_GE == 1
+  // Configuration (not consumed state): the debug verbosity and the limits a
+  // document is checked against.  Initialized exactly once at creation so that
+  // values explicitly chosen through the properties API survive
+  // XML_ParserReset(); only the counters that those limits consume are reset
+  // per document in parserResetDocumentState().
+  parser->m_accounting.debugLevel
+      = getDebugLevel("EXPAT_ACCOUNTING_DEBUG", 0);
+  parser->m_accounting.maximumAmplificationFactor
+      = EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+  parser->m_accounting.activationThresholdBytes
+      = EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+
+  parser->m_entity_stats.debugLevel = getDebugLevel("EXPAT_ENTITY_DEBUG", 0);
+#else
+  UNUSED_P(parser);
+#endif
+}
+
+static void
+parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
+  parserResetUserConfiguration(parser);
+  parserResetDocumentState(parser, encodingName);
+
+  // Security configuration is established once at creation.  On a reset the
+  // configured limits must persist while the consumed counters (already zeroed
+  // in parserResetDocumentState) start fresh for the next document.
+  if (! isReset)
+    parserInitSecurityConfiguration(parser);
 }
 
 /* moves list of bindings to m_freeBindingList */
@@ -1630,6 +1703,12 @@ XML_ParserReset(XML_Parser parser, const XML_Char *encodingName) {
 
   if (parser->m_parentParser)
     return XML_FALSE;
+
+  /* Phase 1: release/recycle all resources owned by the document that is
+   * being discarded.  Nothing here is allowed to survive into the next
+   * document; reusable allocations (tags, entities, bindings, pools) are moved
+   * onto the parser's free lists, the rest is freed outright.
+   */
   // The application-defined release callback may access the parser, so it
   // must run before any parser state is freed.
   if (parser->m_unknownEncodingRelease)
@@ -1658,10 +1737,21 @@ XML_ParserReset(XML_Parser parser, const XML_Char *encodingName) {
   poolClear(&parser->m_temp2Pool);
   FREE(parser, (void *)parser->m_protocolEncodingName);
   parser->m_protocolEncodingName = NULL;
+
+  /* Phase 2: re-initialize.  This clears the user callback configuration and
+   * every per-document parse state (open entities, tag stack, namespaces,
+   * error code and the consumed security counters) while deliberately keeping
+   * the configured protection thresholds, ns and ns_triplets.
+   */
   parserInit(parser, encodingName, /*isReset=*/true);
   dtdReset(parser->m_dtd, parser);
 
 #if XML_GE == 1
+  /* Phase 3: re-baseline the live allocation tracker.  Memory still held by
+   * the parser (recycled free lists, pools, buffers) is treated as the new
+   * zero point, so one document's allocations cannot consume the next
+   * document's activation budget.
+   */
   parser->m_alloc_tracker.bytesAllocatedWhenLastReset
       = parser->m_alloc_tracker.bytesAllocated;
 #endif
@@ -1824,6 +1914,19 @@ XML_ExternalEntityParserCreate(XML_Parser oldParser, const XML_Char *context,
   if (! parser)
     return NULL;
 
+  /* The sub-parser was just created through parserCreate(), so it starts with
+   * fresh per-document state and zeroed security counters (see
+   * parserResetDocumentState).  What it takes from its parent here is ONLY the
+   * user-facing handler/callback configuration plus a handful of document
+   * parsing options; it must never inherit the parent's open entities, tag
+   * stack, in-flight namespaces, error code or consumed budget.  The actual
+   * billion-laughs/alloc accounting always runs against the root parser via
+   * getRootParserOf(), so a child neither keeps nor exhausts a budget of its
+   * own.
+   */
+
+  /* (1) Inherit user-facing callback configuration (the same group of fields
+   *     that parserResetUserConfiguration() clears on XML_ParserReset). */
   parser->m_startElementHandler = oldStartElementHandler;
   parser->m_endElementHandler = oldEndElementHandler;
   parser->m_characterDataHandler = oldCharacterDataHandler;
@@ -1853,11 +1956,17 @@ XML_ExternalEntityParserCreate(XML_Parser oldParser, const XML_Char *context,
     parser->m_handlerArg = parser;
   if (oldExternalEntityRefHandlerArg != oldParser)
     parser->m_externalEntityRefHandlerArg = oldExternalEntityRefHandlerArg;
+
+  /* (2) Inherit document-level parsing options (not consumed parse state). */
   parser->m_defaultExpandInternalEntities = oldDefaultExpandInternalEntities;
   parser->m_ns_triplets = oldns_triplets;
+  /* The hash secret is shared so DTD/entity hash tables copied from the parent
+   * remain readable; it is an internal mechanism, not document content. */
   parser->m_hash_secret_salt_128 = oldhash_secret_salt_128;
   parser->m_hash_secret_salt_set = oldhash_secret_salt_set;
   parser->m_reparseDeferralEnabled = oldReparseDeferralEnabled;
+
+  /* (3) Link to the parent.  All security accounting is rooted there. */
   parser->m_parentParser = oldParser;
 #ifdef XML_DTD
   parser->m_paramEntityParsing = oldParamEntityParsing;

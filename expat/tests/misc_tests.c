@@ -1297,6 +1297,67 @@ START_TEST(test_misc_getinputcontext_from_handlers_only) {
 }
 END_TEST
 
+static int g_reset_boundary_start_element_count;
+
+static void XMLCALL
+reset_boundary_start_element(void *userData, const XML_Char *name,
+                             const XML_Char **atts) {
+  UNUSED_P(userData);
+  UNUSED_P(name);
+  UNUSED_P(atts);
+  g_reset_boundary_start_element_count++;
+}
+
+/* Pins the boundary between user callback configuration and single-document
+ * state across a failed parse followed by parser reuse:
+ *  - the failed document's error/position state must not survive the reset,
+ *  - user callback configuration (handlers, userData) is cleared on reset as
+ *    documented, i.e. it is tracked separately from document parse state,
+ *  - a subsequent document starts from a clean slate and parses successfully.
+ */
+START_TEST(test_misc_reset_separates_config_from_document_state) {
+  // Speed up the test, chunk size expected to not matter in this test
+  if (g_chunkSize != 0)
+    return;
+
+  int userDataMarker = 0;
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  XML_SetUserData(parser, &userDataMarker);
+  XML_SetStartElementHandler(parser, reset_boundary_start_element);
+
+  const char *const broken = "<doc><a></doc>"; // mismatched tag -> error
+  assert_true(XML_Parse_SINGLE_BYTES(parser, broken, (int)strlen(broken),
+                                     XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_TAG_MISMATCH);
+  assert_true(g_reset_boundary_start_element_count >= 1);
+
+  // Reusing the same parser after a failed parse must reset cleanly.
+  assert_true(XML_ParserReset(parser, NULL) == XML_STATUS_OK);
+
+  // No document state may linger: error cleared, back to initialized.
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  XML_ParsingStatus status;
+  XML_GetParsingStatus(parser, &status);
+  assert_true(status.parsing == XML_INITIALIZED);
+
+  // User callback configuration is a separate reset group and is cleared.
+  assert_true(XML_GetUserData(parser) == NULL);
+  const int countBeforeReuse = g_reset_boundary_start_element_count;
+
+  const char *const good = "<r/>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, good, (int)strlen(good),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+  // The handler was cleared, so parsing the next document must not invoke it.
+  assert_true(g_reset_boundary_start_element_count == countBeforeReuse);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
 void
 make_miscellaneous_test_case(Suite *s) {
   TCase *tc_misc = tcase_create("miscellaneous tests");
@@ -1343,4 +1404,6 @@ make_miscellaneous_test_case(Suite *s) {
   tcase_add_test(tc_misc, test_misc_start_doctype_decl_handler_reset);
   tcase_add_test(tc_misc, test_misc_empty_nonfinal_subparser_parse);
   tcase_add_test(tc_misc, test_misc_getinputcontext_from_handlers_only);
+  tcase_add_test(tc_misc,
+                 test_misc_reset_separates_config_from_document_state);
 }
