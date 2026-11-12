@@ -1,0 +1,1093 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake:233 (message)"
+      - "CMakeLists.txt:44 (project)"
+    message: |
+      The system is: Linux - 6.8.0-124-generic - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:44 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: -fshort-wchar
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/3.28.3/CompilerIdC/a.out
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:44 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ce3a9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ce3a9.dir/build.make CMakeFiles/cmTC_ce3a9.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL'
+        Building C object CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -fshort-wchar    -v -o CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04.1' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 
+        COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_ce3a9.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_ce3a9.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fshort-wchar -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccDauHOC.s
+        GNU C17 (Ubuntu 13.3.0-6ubuntu2~24.04.1) version 13.3.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-linux-gnu/13/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        Compiler executable checksum: b220a7f1a1f69970d969d254ad9ec166
+        COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_ce3a9.dir/'
+         as -v --64 -o CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o /tmp/ccDauHOC.s
+        GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_ce3a9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ce3a9.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar   -v CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o -o cmTC_ce3a9 
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04.1' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'cmTC_ce3a9' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_ce3a9.'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccxBYcLf.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_ce3a9 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+        COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'cmTC_ce3a9' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_ce3a9.'
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:127 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:44 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-linux-gnu/13/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/13/include] ==> [/usr/lib/gcc/x86_64-linux-gnu/13/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/gcc/x86_64-linux-gnu/13/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:159 (message)"
+      - "/usr/share/cmake-3.28/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:44 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        ignore line: [Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ce3a9/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_ce3a9.dir/build.make CMakeFiles/cmTC_ce3a9.dir/build]
+        ignore line: [gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2mJDaL']
+        ignore line: [Building C object CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -fshort-wchar    -v -o CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04.1' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_ce3a9.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-3.28/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_ce3a9.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fshort-wchar -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccDauHOC.s]
+        ignore line: [GNU C17 (Ubuntu 13.3.0-6ubuntu2~24.04.1) version 13.3.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/13/../../../../x86_64-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/13/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: b220a7f1a1f69970d969d254ad9ec166]
+        ignore line: [COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_ce3a9.dir/']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o /tmp/ccDauHOC.s]
+        ignore line: [GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_ce3a9]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ce3a9.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/cc -fshort-wchar   -v CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o -o cmTC_ce3a9 ]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 13.3.0-6ubuntu2~24.04.1' --with-bugurl=file:///usr/share/doc/gcc-13/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 --prefix=/usr --with-gcc-major-version-only --program-suffix=-13 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-13-EldibY/gcc-13-13.3.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04.1) ]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-fshort-wchar' '-v' '-o' 'cmTC_ce3a9' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_ce3a9.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccxBYcLf.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_ce3a9 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/13/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccxBYcLf.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-znow] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_ce3a9] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..]
+          arg [CMakeFiles/cmTC_ce3a9.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o] ==> [/usr/lib/x86_64-linux-gnu/crtn.o]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13] ==> [/usr/lib/gcc/x86_64-linux-gnu/13]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> [/usr/lib]
+        implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+        implicit objs: [/usr/lib/x86_64-linux-gnu/Scrt1.o;/usr/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o;/usr/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/13;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:9 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for dlfcn.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-HhcQSC"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-HhcQSC"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_DLFCN_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-HhcQSC'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e4d6a/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_e4d6a.dir/build.make CMakeFiles/cmTC_e4d6a.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-HhcQSC'
+        Building C object CMakeFiles/cmTC_e4d6a.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_e4d6a.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-HhcQSC/CheckIncludeFile.c
+        Linking C executable cmTC_e4d6a
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e4d6a.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_e4d6a.dir/CheckIncludeFile.c.o -o cmTC_e4d6a 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-HhcQSC'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:10 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for fcntl.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-09wHyO"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-09wHyO"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_FCNTL_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-09wHyO'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_21fe3/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_21fe3.dir/build.make CMakeFiles/cmTC_21fe3.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-09wHyO'
+        Building C object CMakeFiles/cmTC_21fe3.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_21fe3.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-09wHyO/CheckIncludeFile.c
+        Linking C executable cmTC_21fe3
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_21fe3.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_21fe3.dir/CheckIncludeFile.c.o -o cmTC_21fe3 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-09wHyO'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:11 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for inttypes.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SSY93j"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SSY93j"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_INTTYPES_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SSY93j'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_57869/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_57869.dir/build.make CMakeFiles/cmTC_57869.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SSY93j'
+        Building C object CMakeFiles/cmTC_57869.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_57869.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SSY93j/CheckIncludeFile.c
+        Linking C executable cmTC_57869
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_57869.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_57869.dir/CheckIncludeFile.c.o -o cmTC_57869 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SSY93j'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:12 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for memory.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-OWw2Q8"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-OWw2Q8"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_MEMORY_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-OWw2Q8'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1afa3/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1afa3.dir/build.make CMakeFiles/cmTC_1afa3.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-OWw2Q8'
+        Building C object CMakeFiles/cmTC_1afa3.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_1afa3.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-OWw2Q8/CheckIncludeFile.c
+        Linking C executable cmTC_1afa3
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1afa3.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_1afa3.dir/CheckIncludeFile.c.o -o cmTC_1afa3 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-OWw2Q8'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:13 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for stdint.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-a0aAl8"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-a0aAl8"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STDINT_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-a0aAl8'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_db87a/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_db87a.dir/build.make CMakeFiles/cmTC_db87a.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-a0aAl8'
+        Building C object CMakeFiles/cmTC_db87a.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_db87a.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-a0aAl8/CheckIncludeFile.c
+        Linking C executable cmTC_db87a
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_db87a.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_db87a.dir/CheckIncludeFile.c.o -o cmTC_db87a 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-a0aAl8'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:14 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for stdlib.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-cRUFj0"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-cRUFj0"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STDLIB_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-cRUFj0'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6b0b9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_6b0b9.dir/build.make CMakeFiles/cmTC_6b0b9.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-cRUFj0'
+        Building C object CMakeFiles/cmTC_6b0b9.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_6b0b9.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-cRUFj0/CheckIncludeFile.c
+        Linking C executable cmTC_6b0b9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6b0b9.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_6b0b9.dir/CheckIncludeFile.c.o -o cmTC_6b0b9 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-cRUFj0'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:15 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for strings.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SEBMJZ"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SEBMJZ"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STRINGS_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SEBMJZ'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_da341/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_da341.dir/build.make CMakeFiles/cmTC_da341.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SEBMJZ'
+        Building C object CMakeFiles/cmTC_da341.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_da341.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SEBMJZ/CheckIncludeFile.c
+        Linking C executable cmTC_da341
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_da341.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_da341.dir/CheckIncludeFile.c.o -o cmTC_da341 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-SEBMJZ'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:16 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for string.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-0b69BN"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-0b69BN"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_STRING_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-0b69BN'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_917de/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_917de.dir/build.make CMakeFiles/cmTC_917de.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-0b69BN'
+        Building C object CMakeFiles/cmTC_917de.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_917de.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-0b69BN/CheckIncludeFile.c
+        Linking C executable cmTC_917de
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_917de.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_917de.dir/CheckIncludeFile.c.o -o cmTC_917de 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-0b69BN'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:17 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for sys/stat.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-H2svur"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-H2svur"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SYS_STAT_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-H2svur'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_27ab5/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_27ab5.dir/build.make CMakeFiles/cmTC_27ab5.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-H2svur'
+        Building C object CMakeFiles/cmTC_27ab5.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_27ab5.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-H2svur/CheckIncludeFile.c
+        Linking C executable cmTC_27ab5
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_27ab5.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_27ab5.dir/CheckIncludeFile.c.o -o cmTC_27ab5 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-H2svur'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:18 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for sys/types.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-5df8xk"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-5df8xk"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SYS_TYPES_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-5df8xk'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ea11f/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ea11f.dir/build.make CMakeFiles/cmTC_ea11f.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-5df8xk'
+        Building C object CMakeFiles/cmTC_ea11f.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_ea11f.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-5df8xk/CheckIncludeFile.c
+        Linking C executable cmTC_ea11f
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ea11f.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_ea11f.dir/CheckIncludeFile.c.o -o cmTC_ea11f 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-5df8xk'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFile.cmake:90 (try_compile)"
+      - "ConfigureChecks.cmake:19 (check_include_file)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for unistd.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-lZ7lVs"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-lZ7lVs"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_UNISTD_H"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-lZ7lVs'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_38828/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_38828.dir/build.make CMakeFiles/cmTC_38828.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-lZ7lVs'
+        Building C object CMakeFiles/cmTC_38828.dir/CheckIncludeFile.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_38828.dir/CheckIncludeFile.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-lZ7lVs/CheckIncludeFile.c
+        Linking C executable cmTC_38828
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_38828.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_38828.dir/CheckIncludeFile.c.o -o cmTC_38828 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-lZ7lVs'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "ConfigureChecks.cmake:21 (check_symbol_exists)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for getpagesize"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_GETPAGESIZE"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_d8425/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_d8425.dir/build.make CMakeFiles/cmTC_d8425.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt'
+        Building C object CMakeFiles/cmTC_d8425.dir/CheckSymbolExists.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_d8425.dir/CheckSymbolExists.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt/CheckSymbolExists.c
+        /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt/CheckSymbolExists.c: In function ‘main’:
+        /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt/CheckSymbolExists.c:8:19: error: ‘getpagesize’ undeclared (first use in this function)
+            8 |   return ((int*)(&getpagesize))[argc];
+              |                   ^~~~~~~~~~~
+        /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt/CheckSymbolExists.c:8:19: note: each undeclared identifier is reported only once for each function it appears in
+        gmake[1]: *** [CMakeFiles/cmTC_d8425.dir/build.make:78: CMakeFiles/cmTC_d8425.dir/CheckSymbolExists.c.o] Error 1
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-IWlaUt'
+        gmake: *** [Makefile:127: cmTC_d8425/fast] Error 2
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "ConfigureChecks.cmake:22 (check_symbol_exists)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for mmap"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-oj4Kn6"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-oj4Kn6"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_MMAP"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-oj4Kn6'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_0820a/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_0820a.dir/build.make CMakeFiles/cmTC_0820a.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-oj4Kn6'
+        Building C object CMakeFiles/cmTC_0820a.dir/CheckSymbolExists.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_0820a.dir/CheckSymbolExists.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-oj4Kn6/CheckSymbolExists.c
+        Linking C executable cmTC_0820a
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0820a.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_0820a.dir/CheckSymbolExists.c.o -o cmTC_0820a 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-oj4Kn6'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:140 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckSymbolExists.cmake:66 (__CHECK_SYMBOL_EXISTS_IMPL)"
+      - "ConfigureChecks.cmake:23 (check_symbol_exists)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for getrandom"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-NuHRgu"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-NuHRgu"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_GETRANDOM"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-NuHRgu'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_026fb/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_026fb.dir/build.make CMakeFiles/cmTC_026fb.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-NuHRgu'
+        Building C object CMakeFiles/cmTC_026fb.dir/CheckSymbolExists.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_026fb.dir/CheckSymbolExists.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-NuHRgu/CheckSymbolExists.c
+        Linking C executable cmTC_026fb
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_026fb.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_026fb.dir/CheckSymbolExists.c.o -o cmTC_026fb 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-NuHRgu'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "ConfigureChecks.cmake:25 (check_c_source_compiles)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test HAVE_ARC4RANDOM_BUF"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-xiSWdI"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-xiSWdI"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_ARC4RANDOM_BUF"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-xiSWdI'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ed7c5/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ed7c5.dir/build.make CMakeFiles/cmTC_ed7c5.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-xiSWdI'
+        Building C object CMakeFiles/cmTC_ed7c5.dir/src.c.o
+        /usr/bin/cc -DHAVE_ARC4RANDOM_BUF  -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_ed7c5.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-xiSWdI/src.c
+        Linking C executable cmTC_ed7c5
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ed7c5.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_ed7c5.dir/src.c.o -o cmTC_ed7c5 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-xiSWdI'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "ConfigureChecks.cmake:37 (check_c_source_compiles)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test HAVE_ARC4RANDOM"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-ePmtR4"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-ePmtR4"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_ARC4RANDOM"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-ePmtR4'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4a6de/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_4a6de.dir/build.make CMakeFiles/cmTC_4a6de.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-ePmtR4'
+        Building C object CMakeFiles/cmTC_4a6de.dir/src.c.o
+        /usr/bin/cc -DHAVE_ARC4RANDOM  -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_4a6de.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-ePmtR4/src.c
+        Linking C executable cmTC_4a6de
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4a6de.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_4a6de.dir/src.c.o -o cmTC_4a6de 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-ePmtR4'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckIncludeFiles.cmake:132 (try_compile)"
+      - "ConfigureChecks.cmake:51 (check_include_files)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for 4 include files stdlib.h, ..., float.h"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2yG5Wm"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2yG5Wm"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "STDC_HEADERS"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2yG5Wm'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6e01b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_6e01b.dir/build.make CMakeFiles/cmTC_6e01b.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2yG5Wm'
+        Building C object CMakeFiles/cmTC_6e01b.dir/STDC_HEADERS.c.o
+        /usr/bin/cc   -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_6e01b.dir/STDC_HEADERS.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2yG5Wm/STDC_HEADERS.c
+        Linking C executable cmTC_6e01b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6e01b.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_6e01b.dir/STDC_HEADERS.c.o -o cmTC_6e01b 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-2yG5Wm'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "ConfigureChecks.cmake:62 (check_c_source_compiles)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test HAVE_OFF_T"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-o3mkWj"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-o3mkWj"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_OFF_T"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-o3mkWj'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_fd970/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_fd970.dir/build.make CMakeFiles/cmTC_fd970.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-o3mkWj'
+        Building C object CMakeFiles/cmTC_fd970.dir/src.c.o
+        /usr/bin/cc -DHAVE_OFF_T  -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_fd970.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-o3mkWj/src.c
+        Linking C executable cmTC_fd970
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_fd970.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_fd970.dir/src.c.o -o cmTC_fd970 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-o3mkWj'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "ConfigureChecks.cmake:76 (check_c_source_compiles)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test HAVE_GETENTROPY"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-sFbLIz"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-sFbLIz"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_GETENTROPY"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-sFbLIz'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_3a6af/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_3a6af.dir/build.make CMakeFiles/cmTC_3a6af.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-sFbLIz'
+        Building C object CMakeFiles/cmTC_3a6af.dir/src.c.o
+        /usr/bin/cc -DHAVE_GETENTROPY  -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_3a6af.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-sFbLIz/src.c
+        Linking C executable cmTC_3a6af
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3a6af.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_3a6af.dir/src.c.o -o cmTC_3a6af 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-sFbLIz'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/CheckCSourceCompiles.cmake:52 (cmake_check_source_compiles)"
+      - "ConfigureChecks.cmake:97 (check_c_source_compiles)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test HAVE_SYSCALL_GETRANDOM"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-31Uy8W"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-31Uy8W"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAVE_SYSCALL_GETRANDOM"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-31Uy8W'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_3a66a/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_3a66a.dir/build.make CMakeFiles/cmTC_3a66a.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-31Uy8W'
+        Building C object CMakeFiles/cmTC_3a66a.dir/src.c.o
+        /usr/bin/cc -DHAVE_SYSCALL_GETRANDOM  -fshort-wchar  -std=c99 -o CMakeFiles/cmTC_3a66a.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-31Uy8W/src.c
+        Linking C executable cmTC_3a66a
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3a66a.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_3a66a.dir/src.c.o -o cmTC_3a66a 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-31Uy8W'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake-3.28/Modules/CheckCCompilerFlag.cmake:51 (cmake_check_compiler_flag)"
+      - "ConfigureChecks.cmake:113 (check_c_compiler_flag)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test _FLAG_DETECTION_UNUSABLE"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-7j4rYc"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-7j4rYc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "_FLAG_DETECTION_UNUSABLE"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-7j4rYc'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_729f4/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_729f4.dir/build.make CMakeFiles/cmTC_729f4.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-7j4rYc'
+        Building C object CMakeFiles/cmTC_729f4.dir/src.c.o
+        /usr/bin/cc -D_FLAG_DETECTION_UNUSABLE  -fshort-wchar  -std=c99   -no-such-thing -o CMakeFiles/cmTC_729f4.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-7j4rYc/src.c
+        cc: error: unrecognized command-line option '-no-such-thing'
+        gmake[1]: *** [CMakeFiles/cmTC_729f4.dir/build.make:78: CMakeFiles/cmTC_729f4.dir/src.c.o] Error 1
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-7j4rYc'
+        gmake: *** [Makefile:127: cmTC_729f4/fast] Error 2
+        
+      exitCode: 2
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake-3.28/Modules/CheckCCompilerFlag.cmake:51 (cmake_check_compiler_flag)"
+      - "ConfigureChecks.cmake:125 (check_c_compiler_flag)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test FLAG_WSTRICT_ALIASING"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-90UEF2"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-90UEF2"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "FLAG_WSTRICT_ALIASING"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-90UEF2'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_9a3a0/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_9a3a0.dir/build.make CMakeFiles/cmTC_9a3a0.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-90UEF2'
+        Building C object CMakeFiles/cmTC_9a3a0.dir/src.c.o
+        /usr/bin/cc -DFLAG_WSTRICT_ALIASING  -fshort-wchar  -std=c99   -Wstrict-aliasing=3 -o CMakeFiles/cmTC_9a3a0.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-90UEF2/src.c
+        Linking C executable cmTC_9a3a0
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9a3a0.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_9a3a0.dir/src.c.o -o cmTC_9a3a0 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-90UEF2'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake-3.28/Modules/CheckCCompilerFlag.cmake:51 (cmake_check_compiler_flag)"
+      - "ConfigureChecks.cmake:126 (check_c_compiler_flag)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test FLAG_WIMPLICIT_FALLTHROUGH"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-soNIBV"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-soNIBV"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "FLAG_WIMPLICIT_FALLTHROUGH"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-soNIBV'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_a7ed0/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_a7ed0.dir/build.make CMakeFiles/cmTC_a7ed0.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-soNIBV'
+        Building C object CMakeFiles/cmTC_a7ed0.dir/src.c.o
+        /usr/bin/cc -DFLAG_WIMPLICIT_FALLTHROUGH  -fshort-wchar  -std=c99   -Wimplicit-fallthrough -o CMakeFiles/cmTC_a7ed0.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-soNIBV/src.c
+        Linking C executable cmTC_a7ed0
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a7ed0.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_a7ed0.dir/src.c.o -o cmTC_a7ed0 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-soNIBV'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake:101 (try_compile)"
+      - "/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/share/cmake-3.28/Modules/CheckCCompilerFlag.cmake:51 (cmake_check_compiler_flag)"
+      - "ConfigureChecks.cmake:127 (check_c_compiler_flag)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Performing Test FLAG_VISIBILITY"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-9yNNdF"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-9yNNdF"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "FLAG_VISIBILITY"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-9yNNdF'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_73024/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_73024.dir/build.make CMakeFiles/cmTC_73024.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-9yNNdF'
+        Building C object CMakeFiles/cmTC_73024.dir/src.c.o
+        /usr/bin/cc -DFLAG_VISIBILITY  -fshort-wchar  -std=c99   -fvisibility=hidden -o CMakeFiles/cmTC_73024.dir/src.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-9yNNdF/src.c
+        Linking C executable cmTC_73024
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_73024.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar  CMakeFiles/cmTC_73024.dir/src.c.o -o cmTC_73024 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-9yNNdF'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/share/cmake-3.28/Modules/CheckLibraryExists.cmake:69 (try_compile)"
+      - "ConfigureChecks.cmake:130 (check_library_exists)"
+      - "CMakeLists.txt:293 (include)"
+    checks:
+      - "Looking for cos in m"
+    directories:
+      source: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O"
+      binary: "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "-fshort-wchar"
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "_EXPAT_LIBM_FOUND"
+      cached: true
+      stdout: |
+        Change Dir: '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O'
+        
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ea715/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ea715.dir/build.make CMakeFiles/cmTC_ea715.dir/build
+        gmake[1]: Entering directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O'
+        Building C object CMakeFiles/cmTC_ea715.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -fshort-wchar -DCHECK_FUNCTION_EXISTS=cos -std=c99 -o CMakeFiles/cmTC_ea715.dir/CheckFunctionExists.c.o -c /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O/CheckFunctionExists.c
+        <command-line>: warning: conflicting types for built-in function ‘cos’; expected ‘double(double)’ [-Wbuiltin-declaration-mismatch]
+        /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O/CheckFunctionExists.c:7:3: note: in expansion of macro ‘CHECK_FUNCTION_EXISTS’
+            7 |   CHECK_FUNCTION_EXISTS(void);
+              |   ^~~~~~~~~~~~~~~~~~~~~
+        /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O/CheckFunctionExists.c:1:1: note: ‘cos’ is declared in header ‘<math.h>’
+          +++ |+#include <math.h>
+            1 | #ifdef CHECK_FUNCTION_EXISTS
+        Linking C executable cmTC_ea715
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ea715.dir/link.txt --verbose=1
+        /usr/bin/cc -fshort-wchar -DCHECK_FUNCTION_EXISTS=cos CMakeFiles/cmTC_ea715.dir/CheckFunctionExists.c.o -o cmTC_ea715  -lm 
+        gmake[1]: Leaving directory '/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/CMakeScratch/TryCompile-f58k3O'
+        
+      exitCode: 0
+...

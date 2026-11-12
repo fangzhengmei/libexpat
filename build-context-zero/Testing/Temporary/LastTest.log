@@ -1,0 +1,20 @@
+Start testing: Nov 12 05:12 UTC
+----------------------------------------------------------
+1/1 Testing: runtests
+1/1 Test: runtests
+Command: "/usr/bin/bash" "run.sh" "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-context-zero/tests/runtests"
+Directory: /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-context-zero
+"runtests" start time: Nov 12 05:12 UTC
+Output:
+----------------------------------------------------------
+Expat version: expat_2.10.0
+100%: Checks: 5412, Failed: 0
+<end of output>
+Test time =  18.74 sec
+----------------------------------------------------------
+Test Passed.
+"runtests" end time: Nov 12 05:12 UTC
+"runtests" time elapsed: 00:00:18
+----------------------------------------------------------
+
+End testing: Nov 12 05:12 UTC

@@ -1,0 +1,32 @@
+Start testing: Nov 12 04:50 UTC
+----------------------------------------------------------
+1/1 Testing: runtests
+1/1 Test: runtests
+Command: "/usr/bin/bash" "run.sh" "/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/tests/runtests"
+Directory: /srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2
+"runtests" start time: Nov 12 04:50 UTC
+Output:
+----------------------------------------------------------
+ERROR: check failed: xcslen(test) == 4
+ERROR: check failed: xcsncmp(test, testing, 4) == 0
+ERROR: check failed: xcsnstr(haystack, hay, xcslen(haystack)) == haystack
+ERROR: Parsing failed even at max allocation count
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+ERROR: Memory leak on an allocation-failure code path
+<end of output>
+Test time =   1.10 sec
+----------------------------------------------------------
+Test Failed.
+"runtests" end time: Nov 12 04:50 UTC
+"runtests" time elapsed: 00:00:01
+----------------------------------------------------------
+
+End testing: Nov 12 04:50 UTC

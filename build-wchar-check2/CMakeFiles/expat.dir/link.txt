@@ -1,0 +1,2 @@
+/usr/bin/ar qc libexpatw.a CMakeFiles/expat.dir/lib/xcs.c.o CMakeFiles/expat.dir/lib/xmlparse.c.o CMakeFiles/expat.dir/lib/xmlrole.c.o CMakeFiles/expat.dir/lib/xmltok.c.o CMakeFiles/expat.dir/lib/random_arc4random.c.o CMakeFiles/expat.dir/lib/random_arc4random_buf.c.o CMakeFiles/expat.dir/lib/random_getentropy.c.o CMakeFiles/expat.dir/lib/random_getrandom.c.o
+/usr/bin/ranlib libexpatw.a

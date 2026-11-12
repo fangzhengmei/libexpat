@@ -1,0 +1,1 @@
+/usr/bin/cc -fsanitize=address,undefined -fno-omit-frame-pointer  -Wstrict-aliasing=3 -Wimplicit-fallthrough -fvisibility=hidden -g -fsanitize=address,undefined CMakeFiles/benchmark.dir/tests/benchmark/benchmark.c.o -o tests/benchmark/benchmark  libexpat.a -lm 

@@ -1,0 +1,1 @@
+/usr/bin/cc   -Wstrict-aliasing=3 -Wimplicit-fallthrough -fvisibility=hidden -g CMakeFiles/outline.dir/examples/outline.c.o -o examples/outline  libexpat.a -lm 

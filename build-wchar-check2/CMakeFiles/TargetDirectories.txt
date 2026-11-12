@@ -1,0 +1,12 @@
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/expat.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/runtests.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/benchmark.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/package.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/package_source.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/test.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/edit_cache.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/rebuild_cache.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/list_install_components.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/install.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/install/local.dir
+/srv/fb2/fangzhengmei/0004-libexpat-2-c3186eea/build-wchar-check2/CMakeFiles/install/strip.dir

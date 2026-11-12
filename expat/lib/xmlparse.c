@@ -788,6 +788,7 @@ struct XML_ParserStruct {
   const char *m_eventPtr;
   const char *m_eventEndPtr;
   const char *m_positionPtr;
+  POSITION m_eventPosition;
   OPEN_INTERNAL_ENTITY *m_openInternalEntities;
   OPEN_INTERNAL_ENTITY *m_openAttributeEntities;
   OPEN_INTERNAL_ENTITY *m_openValueEntities;
@@ -1547,6 +1548,7 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_declAttributeIsCdata = false;
   parser->m_declAttributeIsId = false;
   memset(&parser->m_position, 0, sizeof(POSITION));
+  memset(&parser->m_eventPosition, 0, sizeof(POSITION));
   parser->m_errorCode = XML_ERROR_NONE;
   parser->m_eventPtr = NULL;
   parser->m_eventEndPtr = NULL;
@@ -2335,6 +2337,12 @@ XML_SetHashSalt16Bytes(XML_Parser parser, const uint8_t entropy[16]) {
   return XML_TRUE;
 }
 
+static bool
+isInsideEntity(XML_Parser parser) {
+  return parser->m_openInternalEntities || parser->m_openAttributeEntities
+         || parser->m_openValueEntities;
+}
+
 enum XML_Status XMLCALL
 XML_Parse(XML_Parser parser, const char *s, int len, int isFinal) {
   if (parser == NULL || isCalledFromInsideHandler(parser))
@@ -2437,6 +2445,21 @@ XML_Parse64(XML_Parser parser, const char *s, size_t len, XML_Bool isFinal) {
       return XML_STATUS_ERROR;
     }
 
+    // Note: The `uintptr_t` casts intend to address `6.5.8 Relational
+    //       operators` of C99 that says that comparison of pointers that do not
+    //       point into the same array object is undefined behavior.
+    const bool eventPtrUseful
+        = isInsideEntity(parser) && parser->m_eventPtr
+          && (uintptr_t)parser->m_eventPtr >= (uintptr_t)s
+          && (uintptr_t)parser->m_eventPtr <= (uintptr_t)end;
+    const size_t eventContextSize
+        = (eventPtrUseful ? (end - parser->m_eventPtr) : 0);
+    const size_t eventLen
+        = (eventPtrUseful
+               ? EXPAT_SAFE_PTR_DIFF(parser->m_eventEndPtr, parser->m_eventPtr)
+               : 0);
+    assert(eventLen <= eventContextSize);
+
     switch (parser->m_parsingStatus.parsing) {
     case XML_SUSPENDED:
       result = XML_STATUS_SUSPENDED;
@@ -2445,7 +2468,6 @@ XML_Parse64(XML_Parser parser, const char *s, size_t len, XML_Bool isFinal) {
     case XML_PARSING:
       if (isFinal) {
         parser->m_parsingStatus.parsing = XML_FINISHED;
-        return XML_STATUS_OK;
       }
       EXPAT_FALLTHROUGH;
     default:
@@ -2459,9 +2481,12 @@ XML_Parse64(XML_Parser parser, const char *s, size_t len, XML_Bool isFinal) {
     nLeftOver = s + len - end;
     assert(nLeftOver <= len);
 
-    const size_t bytesToCopy = (XML_CONTEXT_BYTES > len - nLeftOver)
-                                   ? len
-                                   : (XML_CONTEXT_BYTES + nLeftOver);
+    const size_t contextSize = (XML_CONTEXT_BYTES > eventContextSize)
+                                   ? XML_CONTEXT_BYTES
+                                   : eventContextSize;
+
+    const size_t bytesToCopy
+        = (contextSize > len - nLeftOver) ? len : (contextSize + nLeftOver);
     assert(bytesToCopy <= len);
 
     if (bytesToCopy) {
@@ -2498,8 +2523,12 @@ XML_Parse64(XML_Parser parser, const char *s, size_t len, XML_Bool isFinal) {
     parser->m_bufferEnd = parser->m_buffer + bytesToCopy;
     parser->m_positionPtr = parser->m_bufferPtr;
     parser->m_parseEndPtr = parser->m_bufferEnd;
-    parser->m_eventPtr = parser->m_bufferPtr;
-    parser->m_eventEndPtr = parser->m_bufferPtr;
+
+    assert((size_t)(parser->m_bufferPtr - parser->m_buffer)
+           >= eventContextSize);
+    parser->m_eventPtr = parser->m_bufferPtr - eventContextSize;
+    parser->m_eventEndPtr = parser->m_eventPtr + eventLen;
+
     return result;
   }
 
@@ -2511,6 +2540,29 @@ XML_Parse64(XML_Parser parser, const char *s, size_t len, XML_Bool isFinal) {
     memcpy(buff, s, len);
   }
   return XML_ParseBuffer64(parser, len, isFinal);
+}
+
+// Advances or sets `parser->m_eventPtr` if (a) it is `NULL` or (b) it points
+// into the parse buffer but behind `parser->m_bufferPtr`.
+static void
+advanceEventPtr(XML_Parser parser) {
+  if (! parser->m_bufferPtr)
+    return;
+
+  if (isInsideEntity(parser))
+    return;
+
+  // Note: The `uintptr_t` casts intend to address `6.5.8 Relational operators`
+  //       of C99 that says that comparison of pointers that do not point into
+  //       the same array object is undefined behavior.
+  if (parser->m_eventPtr == NULL
+      || ((uintptr_t)parser->m_buffer <= (uintptr_t)parser->m_eventPtr
+          && (uintptr_t)parser->m_eventPtr < (uintptr_t)parser->m_bufferPtr)) {
+    parser->m_eventPtr = parser->m_bufferPtr;
+    if (parser->m_eventEndPtr != NULL
+        && (uintptr_t)parser->m_eventEndPtr < (uintptr_t)parser->m_eventPtr)
+      parser->m_eventEndPtr = parser->m_bufferPtr;
+  }
 }
 
 enum XML_Status XMLCALL
@@ -2604,6 +2656,7 @@ XML_ParseBuffer64(XML_Parser parser, size_t len, XML_Bool isFinal) {
   XmlUpdatePosition(parser->m_encoding, parser->m_positionPtr,
                     parser->m_bufferPtr, &parser->m_position);
   parser->m_positionPtr = parser->m_bufferPtr;
+  advanceEventPtr(parser);
   return result;
 }
 
@@ -2825,6 +2878,7 @@ XML_ResumeParser(XML_Parser parser) {
   XmlUpdatePosition(parser->m_encoding, parser->m_positionPtr,
                     parser->m_bufferPtr, &parser->m_position);
   parser->m_positionPtr = parser->m_bufferPtr;
+  advanceEventPtr(parser);
   return result;
 }
 
@@ -2937,16 +2991,26 @@ XML_GetInputContext(XML_Parser parser, int *offset, int *size) {
   return NULL;
 }
 
+static void
+updateEventPosition(XML_Parser parser) {
+  if (parser == NULL || parser->m_eventPtr == NULL
+      || (uintptr_t)parser->m_eventPtr
+             < (uintptr_t)parser->m_positionPtr) {
+    return;
+  }
+
+  XmlUpdatePosition(parser->m_encoding, parser->m_positionPtr,
+                    parser->m_eventPtr, &parser->m_position);
+  parser->m_eventPosition = parser->m_position;
+  parser->m_positionPtr = parser->m_eventPtr;
+}
+
 uint64_t XMLCALL
 XML_GetCurrentLineNumber64(XML_Parser parser) {
   if (parser == NULL)
     return 0;
-  if (parser->m_eventPtr && parser->m_eventPtr >= parser->m_positionPtr) {
-    XmlUpdatePosition(parser->m_encoding, parser->m_positionPtr,
-                      parser->m_eventPtr, &parser->m_position);
-    parser->m_positionPtr = parser->m_eventPtr;
-  }
-  return parser->m_position.lineNumber + 1;
+  updateEventPosition(parser);
+  return parser->m_eventPosition.lineNumber + 1;
 }
 
 // DEPRECATED since Expat 2.9.0.
@@ -2964,12 +3028,8 @@ uint64_t XMLCALL
 XML_GetCurrentColumnNumber64(XML_Parser parser) {
   if (parser == NULL)
     return 0;
-  if (parser->m_eventPtr && parser->m_eventPtr >= parser->m_positionPtr) {
-    XmlUpdatePosition(parser->m_encoding, parser->m_positionPtr,
-                      parser->m_eventPtr, &parser->m_position);
-    parser->m_positionPtr = parser->m_eventPtr;
-  }
-  return parser->m_position.columnNumber;
+  updateEventPosition(parser);
+  return parser->m_eventPosition.columnNumber;
 }
 
 // DEPRECATED since Expat 2.9.0.

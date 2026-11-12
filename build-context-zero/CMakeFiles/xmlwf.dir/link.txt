@@ -1,0 +1,1 @@
+/usr/bin/cc   -Wstrict-aliasing=3 -Wimplicit-fallthrough -fvisibility=hidden -g CMakeFiles/xmlwf.dir/lib/xcs.c.o CMakeFiles/xmlwf.dir/xmlwf/codepage.c.o CMakeFiles/xmlwf.dir/xmlwf/readfilemap.c.o CMakeFiles/xmlwf.dir/xmlwf/xmlfile.c.o CMakeFiles/xmlwf.dir/xmlwf/xmlwf.c.o -o xmlwf/xmlwf  libexpat.a -lm 

@@ -57,8 +57,10 @@
 #include "expat_config.h"
 
 #include <assert.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "dummy.h" // for dummy_start_element
@@ -124,6 +126,719 @@ START_TEST(test_misc_null_parser) {
   XML_ParserFree(NULL);
 }
 END_TEST
+
+#ifdef XML_NS
+
+typedef enum {
+  EVENT_ENTITY_DECL,
+  EVENT_START_NAMESPACE,
+  EVENT_END_NAMESPACE,
+  EVENT_START_ELEMENT,
+  EVENT_END_ELEMENT,
+  EVENT_CHARACTER_DATA,
+} EventKind;
+
+typedef enum {
+  PAUSE_NONE,
+  PAUSE_START_NAMESPACE,
+  PAUSE_START_ELEMENT,
+  PAUSE_CHARACTER_DATA,
+  PAUSE_END_ELEMENT,
+  PAUSE_END_NAMESPACE,
+} PauseKind;
+
+typedef struct {
+  EventKind kind;
+  XML_Char *first;
+  XML_Char *second;
+  int64_t byte_index;
+  uint64_t line;
+  uint64_t column;
+} RecordedEvent;
+
+typedef struct {
+  XML_Parser parser;
+  PauseKind pause_kind;
+  RecordedEvent *events;
+  size_t event_count;
+  size_t event_capacity;
+  size_t event_at_pause;
+  int parse_call_at_pause;
+  int resume_count_at_pause;
+  int current_parse_call;
+  int current_resume_count;
+  int final_buffer_at_pause;
+} EventLog;
+
+typedef struct {
+  enum XML_Status return_status;
+  enum XML_Error error_code;
+  enum XML_Parsing parsing;
+  XML_Bool final_buffer;
+  int64_t byte_index;
+  uint64_t line;
+  uint64_t column;
+} ParserResult;
+
+typedef struct {
+  EventLog log;
+  ParserResult result;
+  int parse_calls;
+  int resume_calls;
+} ParseTrace;
+
+typedef enum {
+  FEED_ONE_SHOT,
+  FEED_SPLIT,
+  FEED_FIXED_CHUNKS,
+  FEED_IRREGULAR_CHUNKS,
+} FeedMode;
+
+typedef struct {
+  const char *name;
+  FeedMode mode;
+  size_t split_at;
+  const size_t *chunk_sizes;
+  size_t chunk_size_count;
+  int send_empty_final_block;
+  int supports_pause;
+  PauseKind pause_kind;
+} FeedPlan;
+
+static XML_Char *
+duplicate_xml_chars(const XML_Char *text, size_t length) {
+  XML_Char *copy = malloc((length + 1) * sizeof(XML_Char));
+  assert_true(copy != NULL);
+  memcpy(copy, text, length * sizeof(XML_Char));
+  copy[length] = XCS('\0');
+  return copy;
+}
+
+static XML_Char *
+duplicate_xml_string(const XML_Char *text) {
+  if (text == NULL) {
+    return duplicate_xml_chars(XCS(""), 0);
+  }
+  return duplicate_xml_chars(text, xcslen(text));
+}
+
+static void
+event_log_free(EventLog *log) {
+  for (size_t i = 0; i < log->event_count; i++) {
+    free(log->events[i].first);
+    free(log->events[i].second);
+  }
+  free(log->events);
+}
+
+static void
+record_event(EventLog *log, EventKind kind, const XML_Char *first,
+             const XML_Char *second, size_t second_length,
+             XML_Parser parser) {
+  if (log->event_count == log->event_capacity) {
+    const size_t new_capacity = log->event_capacity == 0
+                                    ? 8
+                                    : log->event_capacity * 2;
+    RecordedEvent *new_events
+        = realloc(log->events, new_capacity * sizeof(RecordedEvent));
+    assert_true(new_events != NULL);
+    log->events = new_events;
+    log->event_capacity = new_capacity;
+  }
+
+  RecordedEvent *event = &log->events[log->event_count];
+  event->kind = kind;
+  event->first = duplicate_xml_string(first);
+  event->second = second == NULL
+                      ? duplicate_xml_chars(XCS(""), 0)
+                      : duplicate_xml_chars(second, second_length);
+  event->byte_index = XML_GetCurrentByteIndex64(parser);
+  event->line = XML_GetCurrentLineNumber64(parser);
+  event->column = XML_GetCurrentColumnNumber64(parser);
+  log->event_count++;
+}
+
+static void
+pause_after_selected_event(EventLog *log, XML_Parser parser,
+                           PauseKind pause_kind, PauseKind event_kind) {
+  if (pause_kind != event_kind) {
+    return;
+  }
+
+  XML_ParsingStatus status;
+  XML_GetParsingStatus(parser, &status);
+  if (status.parsing == XML_SUSPENDED) {
+    // Expat may still deliver a callback that cannot safely be lost after a
+    // suspension (for example, another namespace declaration in the same tag).
+    return;
+  }
+  assert_true(XML_StopParser(parser, XML_TRUE) == XML_STATUS_OK);
+  XML_GetParsingStatus(parser, &status);
+  assert_true(status.parsing == XML_SUSPENDED);
+
+  if (log->event_at_pause == (size_t)-1) {
+    log->event_at_pause = log->event_count - 1;
+    log->parse_call_at_pause = log->current_parse_call;
+    log->resume_count_at_pause = log->current_resume_count;
+    log->final_buffer_at_pause = status.finalBuffer;
+  }
+}
+
+static void XMLCALL
+test_equivalence_entity_decl(void *userData, const XML_Char *name,
+                             int is_parameter_entity, const XML_Char *value,
+                             int value_length, const XML_Char *base,
+                             const XML_Char *system_id,
+                             const XML_Char *public_id,
+                             const XML_Char *notation_name) {
+  EventLog *log = userData;
+  assert_true(! is_parameter_entity);
+  assert_true(base == NULL);
+  assert_true(system_id == NULL);
+  assert_true(public_id == NULL);
+  assert_true(notation_name == NULL);
+  record_event(log, EVENT_ENTITY_DECL, name, value,
+               (size_t)value_length, log->parser);
+}
+
+static void XMLCALL
+test_equivalence_start_namespace(void *userData, const XML_Char *prefix,
+                                 const XML_Char *uri) {
+  EventLog *log = userData;
+  record_event(log, EVENT_START_NAMESPACE, prefix, uri,
+               uri == NULL ? 0 : xcslen(uri), log->parser);
+  pause_after_selected_event(log, log->parser, log->pause_kind,
+                             PAUSE_START_NAMESPACE);
+}
+
+static void XMLCALL
+test_equivalence_end_namespace(void *userData, const XML_Char *prefix) {
+  EventLog *log = userData;
+  record_event(log, EVENT_END_NAMESPACE, prefix, XCS(""), 0, log->parser);
+  pause_after_selected_event(log, log->parser, log->pause_kind,
+                             PAUSE_END_NAMESPACE);
+}
+
+static void XMLCALL
+test_equivalence_start_element(void *userData, const XML_Char *name,
+                               const XML_Char **atts) {
+  EventLog *log = userData;
+  XML_Char attributes[1024];
+  size_t used = 0;
+
+  attributes[0] = XCS('\0');
+  for (size_t i = 0; atts[i] != NULL; i += 2) {
+    if (i != 0) {
+      attributes[used++] = XCS(' ');
+    }
+    size_t name_length = xcslen(atts[i]);
+    size_t value_length = xcslen(atts[i + 1]);
+    assert_true(used + name_length + 1 + value_length + 1
+                < sizeof(attributes) / sizeof(attributes[0]));
+    memcpy(attributes + used, atts[i], name_length * sizeof(XML_Char));
+    used += name_length;
+    attributes[used++] = XCS('=');
+    memcpy(attributes + used, atts[i + 1],
+           value_length * sizeof(XML_Char));
+    used += value_length;
+    attributes[used] = XCS('\0');
+  }
+
+  record_event(log, EVENT_START_ELEMENT, name, attributes, used,
+               log->parser);
+  pause_after_selected_event(log, log->parser, log->pause_kind,
+                             PAUSE_START_ELEMENT);
+}
+
+static void XMLCALL
+test_equivalence_end_element(void *userData, const XML_Char *name) {
+  EventLog *log = userData;
+  record_event(log, EVENT_END_ELEMENT, name, XCS(""), 0, log->parser);
+  pause_after_selected_event(log, log->parser, log->pause_kind,
+                             PAUSE_END_ELEMENT);
+}
+
+static void XMLCALL
+test_equivalence_character_data(void *userData, const XML_Char *text,
+                                int length) {
+  EventLog *log = userData;
+  record_event(log, EVENT_CHARACTER_DATA, XCS(""), text, (size_t)length,
+               log->parser);
+  pause_after_selected_event(log, log->parser, log->pause_kind,
+                             PAUSE_CHARACTER_DATA);
+}
+
+static void
+parse_trace_init(ParseTrace *trace, PauseKind pause_kind) {
+  memset(trace, 0, sizeof(*trace));
+  trace->log.pause_kind = pause_kind;
+  trace->log.event_at_pause = (size_t)-1;
+  trace->log.parse_call_at_pause = -1;
+  trace->log.resume_count_at_pause = -1;
+  trace->log.final_buffer_at_pause = -1;
+}
+
+static void
+parse_trace_free(ParseTrace *trace) {
+  event_log_free(&trace->log);
+}
+
+static void
+record_parser_result(ParseTrace *trace, XML_Parser parser,
+                     enum XML_Status status) {
+  XML_ParsingStatus parsing_status;
+  XML_GetParsingStatus(parser, &parsing_status);
+  trace->result.return_status = status;
+  trace->result.error_code = XML_GetErrorCode(parser);
+  trace->result.parsing = parsing_status.parsing;
+  trace->result.final_buffer = parsing_status.finalBuffer;
+  trace->result.byte_index = XML_GetCurrentByteIndex64(parser);
+  trace->result.line = XML_GetCurrentLineNumber64(parser);
+  trace->result.column = XML_GetCurrentColumnNumber64(parser);
+}
+
+static void
+run_equivalence_feed(ParseTrace *trace, XML_Parser parser, const char *input,
+                     size_t input_length, const FeedPlan *plan) {
+  size_t offset = 0;
+  size_t chunk_index = 0;
+  trace->log.parser = parser;
+
+  while (offset < input_length) {
+    size_t chunk_length;
+    int is_final;
+
+    switch (plan->mode) {
+    case FEED_ONE_SHOT:
+      chunk_length = input_length;
+      break;
+    case FEED_SPLIT:
+      chunk_length = chunk_index == 0 ? plan->split_at
+                                      : input_length - offset;
+      break;
+    case FEED_FIXED_CHUNKS:
+      chunk_length = plan->chunk_sizes[0];
+      break;
+    case FEED_IRREGULAR_CHUNKS:
+      chunk_length = plan->chunk_sizes[chunk_index];
+      break;
+    default:
+      fail("Unknown feed mode");
+      return;
+    }
+
+    if (chunk_length > input_length - offset) {
+      chunk_length = input_length - offset;
+    }
+    assert_true(chunk_length <= INT_MAX);
+    is_final = ! plan->send_empty_final_block
+               && (offset + chunk_length == input_length);
+
+    enum XML_Status status
+        = XML_Parse(parser, input + offset, (int)chunk_length, is_final);
+    trace->parse_calls++;
+    trace->log.current_parse_call = trace->parse_calls;
+    trace->log.current_resume_count = trace->resume_calls;
+    while (status == XML_STATUS_SUSPENDED) {
+      trace->resume_calls++;
+      trace->log.current_resume_count = trace->resume_calls;
+      status = XML_ResumeParser(parser);
+    }
+    if (status == XML_STATUS_ERROR) {
+      record_parser_result(trace, parser, status);
+      return;
+    }
+
+    offset += chunk_length;
+    if (plan->mode == FEED_SPLIT) {
+      chunk_index++;
+    } else if (plan->mode == FEED_IRREGULAR_CHUNKS) {
+      chunk_index++;
+      assert_true(chunk_index <= plan->chunk_size_count);
+    }
+  }
+
+  if (plan->send_empty_final_block) {
+    enum XML_Status status
+        = XML_Parse(parser, NULL, 0, /*isFinal=*/XML_TRUE);
+    trace->parse_calls++;
+    trace->log.current_parse_call = trace->parse_calls;
+    trace->log.current_resume_count = trace->resume_calls;
+    while (status == XML_STATUS_SUSPENDED) {
+      trace->resume_calls++;
+      trace->log.current_resume_count = trace->resume_calls;
+      status = XML_ResumeParser(parser);
+    }
+    record_parser_result(trace, parser, status);
+  } else {
+    XML_ParsingStatus status;
+    XML_GetParsingStatus(parser, &status);
+    record_parser_result(trace, parser,
+                         status.parsing == XML_FINISHED ? XML_STATUS_OK
+                                                       : XML_STATUS_ERROR);
+  }
+}
+
+static void
+assert_events_equal(const ParseTrace *actual, const ParseTrace *baseline) {
+  assert_true(actual->log.event_count == baseline->log.event_count);
+  for (size_t i = 0; i < baseline->log.event_count; i++) {
+    const RecordedEvent *actual_event = &actual->log.events[i];
+    const RecordedEvent *expected_event = &baseline->log.events[i];
+
+    assert_true(actual_event->kind == expected_event->kind);
+    assert_true(xcscmp(actual_event->first, expected_event->first) == 0);
+    assert_true(xcscmp(actual_event->second, expected_event->second) == 0);
+    if (actual_event->byte_index != expected_event->byte_index
+        || actual_event->line != expected_event->line
+        || actual_event->column != expected_event->column) {
+      set_subtest(
+          "event %zu kind %d actual=(%lld,%llu,%llu) "
+          "expected=(%lld,%llu,%llu)",
+          i, (int)actual_event->kind,
+          (long long)actual_event->byte_index,
+          (unsigned long long)actual_event->line,
+          (unsigned long long)actual_event->column,
+          (long long)expected_event->byte_index,
+          (unsigned long long)expected_event->line,
+          (unsigned long long)expected_event->column);
+      fail("event position mismatch");
+    }
+  }
+}
+
+static void
+assert_parser_result_equal(const ParseTrace *actual,
+                           const ParseTrace *baseline) {
+  assert_true(actual->result.return_status
+              == baseline->result.return_status);
+  assert_true(actual->result.error_code == baseline->result.error_code);
+  assert_true(actual->result.parsing == baseline->result.parsing);
+  assert_true(actual->result.final_buffer
+              == baseline->result.final_buffer);
+  assert_true(actual->result.byte_index == baseline->result.byte_index);
+  assert_true(actual->result.line == baseline->result.line);
+  assert_true(actual->result.column == baseline->result.column);
+}
+
+typedef struct {
+  const char *name;
+  const char *input;
+  enum XML_Error expected_error;
+  size_t expected_event_count;
+} EquivalenceDocument;
+
+static const size_t equivalence_fixed_chunk_sizes[] = {7};
+static const size_t equivalence_irregular_chunk_sizes[]
+    = {1, 3, 2, 8, 5, 11, 4, 9, 6, 13, 7, 10, 12, 8, 15, 6, 11, 14, 9, 12,
+       16, 7, 10, 18, 5, 13, 11, 9, 17, 14};
+
+static XML_Parser
+create_equivalence_parser(EventLog *log) {
+  XML_Parser parser = XML_ParserCreateNS(NULL, XCS('|'));
+  assert_true(parser != NULL);
+  log->parser = parser;
+
+  XML_SetUserData(parser, log);
+  XML_SetEntityDeclHandler(parser, test_equivalence_entity_decl);
+  XML_SetNamespaceDeclHandler(parser,
+                              test_equivalence_start_namespace,
+                              test_equivalence_end_namespace);
+  XML_SetElementHandler(parser, test_equivalence_start_element,
+                        test_equivalence_end_element);
+  XML_SetCharacterDataHandler(parser,
+                              test_equivalence_character_data);
+  return parser;
+}
+
+static void
+assert_pause_matches_plan(const ParseTrace *trace, const FeedPlan *plan,
+                          const ParseTrace *baseline) {
+  if (plan->pause_kind == PAUSE_NONE) {
+    assert_true(trace->log.event_at_pause == (size_t)-1);
+    assert_true(trace->resume_calls == 0);
+    return;
+  }
+
+  size_t matching_events = 0;
+  size_t matching_event_index = (size_t)-1;
+  const EventKind expected_event_kinds[] = {
+      [PAUSE_START_NAMESPACE] = EVENT_START_NAMESPACE,
+      [PAUSE_START_ELEMENT] = EVENT_START_ELEMENT,
+      [PAUSE_CHARACTER_DATA] = EVENT_CHARACTER_DATA,
+      [PAUSE_END_ELEMENT] = EVENT_END_ELEMENT,
+      [PAUSE_END_NAMESPACE] = EVENT_END_NAMESPACE,
+  };
+
+  assert_true(plan->pause_kind >= PAUSE_START_NAMESPACE);
+  assert_true(plan->pause_kind <= PAUSE_END_NAMESPACE);
+  for (size_t i = 0; i < baseline->log.event_count; i++) {
+    if (baseline->log.events[i].kind
+        == expected_event_kinds[plan->pause_kind]) {
+      matching_events++;
+      if (matching_event_index == (size_t)-1) {
+        matching_event_index = i;
+      }
+    }
+  }
+
+  if (matching_events == 0) {
+    assert_true(trace->resume_calls == 0);
+    return;
+  }
+  if (trace->log.event_at_pause != matching_event_index) {
+    set_subtest("pause kind=%d matching index=%zu recorded=%zu",
+                (int)plan->pause_kind, matching_event_index,
+                trace->log.event_at_pause);
+    fail("selected callback was not suspended");
+  }
+  assert_true(trace->log.events[trace->log.event_at_pause].kind
+              == expected_event_kinds[plan->pause_kind]);
+  if (trace->log.parse_call_at_pause <= 0) {
+    // The callback can be reached from XML_ResumeParser while XML_Parse has not
+    // started the terminating empty block yet. Expat keeps resume state in the
+    // parser, so record the boundary through the resume count instead.
+    assert_true(trace->log.resume_count_at_pause >= 0);
+    assert_true(trace->resume_calls > 0);
+    return;
+  }
+  assert_true(trace->log.parse_call_at_pause <= trace->parse_calls);
+  assert_true(trace->log.resume_count_at_pause >= 0);
+  assert_true(trace->resume_calls > 0);
+
+  if (plan->send_empty_final_block) {
+    if (trace->log.parse_call_at_pause < trace->parse_calls) {
+      assert_true(trace->log.final_buffer_at_pause == XML_FALSE);
+    }
+  } else if (trace->log.parse_call_at_pause == trace->parse_calls) {
+    assert_true(trace->log.final_buffer_at_pause == XML_TRUE);
+  }
+}
+
+static void
+assert_feed_shape(const ParseTrace *trace, const FeedPlan *plan,
+                  size_t input_length) {
+  switch (plan->mode) {
+  case FEED_ONE_SHOT:
+    assert_true(trace->parse_calls == 1 + plan->send_empty_final_block);
+    break;
+  case FEED_SPLIT:
+    if (plan->split_at == 0) {
+      assert_true(trace->parse_calls
+                  == 1 + plan->send_empty_final_block);
+    } else {
+      assert_true(trace->parse_calls
+                  == 2 + plan->send_empty_final_block);
+    }
+    break;
+  case FEED_FIXED_CHUNKS:
+    assert_true(trace->parse_calls
+                == (int)((input_length
+                          + equivalence_fixed_chunk_sizes[0] - 1)
+                         / equivalence_fixed_chunk_sizes[0])
+                       + plan->send_empty_final_block);
+    break;
+  case FEED_IRREGULAR_CHUNKS:
+    assert_true(trace->parse_calls > 3);
+    break;
+  }
+}
+
+START_TEST(test_misc_chunk_and_suspend_event_equivalence) {
+  if (g_chunkSize != 0) {
+    return; // This test drives its own byte-sized chunk matrix.
+  }
+
+  const EquivalenceDocument documents[] = {
+      {
+          "valid document with a newline in expanded entity",
+          "<!DOCTYPE r [<!ENTITY word 'WORLD'>"
+          "<!ENTITY nested 'pre-\n&word;-post'>]>"
+          "<ex:r xmlns:ex='urn:expat:test' xmlns='urn:default' "
+          "attr='A-&word;-B'><ex:a>&nested;</ex:a></ex:r>",
+          XML_ERROR_NONE,
+          14,
+      },
+      {
+          "valid document",
+          "<!DOCTYPE r [<!ENTITY word 'WORLD'>"
+          "<!ENTITY nested 'pre-&word;-post'>]>"
+          "<ex:r xmlns:ex='urn:expat:test' xmlns='urn:default' "
+          "attr='A-&word;-B'><ex:a>&nested;</ex:a></ex:r>",
+          XML_ERROR_NONE,
+          13,
+      },
+      {
+          "trailing markup after complete root",
+          "<!DOCTYPE r [<!ENTITY word 'WORLD'>"
+          "<!ENTITY nested 'pre-&word;-post'>]>"
+          "<ex:r xmlns:ex='urn:expat:test' xmlns='urn:default' "
+          "attr='A-&word;-B'><ex:a>&nested;</ex:a></ex:r><bad>",
+          XML_ERROR_JUNK_AFTER_DOC_ELEMENT,
+          13,
+      },
+      {
+          "truncated final end tag",
+          "<!DOCTYPE r [<!ENTITY word 'WORLD'>"
+          "<!ENTITY nested 'pre-&word;-post'>]>"
+          "<ex:r xmlns:ex='urn:expat:test' xmlns='urn:default' "
+          "attr='A-&word;-B'><ex:a>&nested;</ex:a></ex:r",
+          XML_ERROR_UNCLOSED_TOKEN,
+          10,
+      },
+  };
+  const size_t split_points[] = {0, 19, 47, 83, 112, 140, 160};
+  const PauseKind pause_kinds[] = {
+      PAUSE_START_NAMESPACE, PAUSE_START_ELEMENT, PAUSE_CHARACTER_DATA,
+      PAUSE_END_ELEMENT, PAUSE_END_NAMESPACE,
+  };
+
+  for (size_t document_index = 0;
+       document_index < sizeof(documents) / sizeof(documents[0]);
+       document_index++) {
+    const EquivalenceDocument *document = &documents[document_index];
+    const size_t input_length = strlen(document->input);
+    FeedPlan plans[32];
+    size_t plan_count = 0;
+
+    assert_true(input_length
+                < sizeof(equivalence_irregular_chunk_sizes)
+                      / sizeof(equivalence_irregular_chunk_sizes[0])
+                      * 20);
+    plans[plan_count++] = (FeedPlan){
+        .name = "one-shot final block",
+        .mode = FEED_ONE_SHOT,
+        .supports_pause = 1,
+        .pause_kind = PAUSE_NONE,
+    };
+    plans[plan_count++] = (FeedPlan){
+        .name = "one-shot input plus empty final block",
+        .mode = FEED_ONE_SHOT,
+        .send_empty_final_block = 1,
+        .supports_pause = 0,
+        .pause_kind = PAUSE_NONE,
+    };
+    plans[plan_count++] = (FeedPlan){
+        .name = "fixed-size byte chunks",
+        .mode = FEED_FIXED_CHUNKS,
+        .chunk_sizes = equivalence_fixed_chunk_sizes,
+        .chunk_size_count
+        = sizeof(equivalence_fixed_chunk_sizes)
+          / sizeof(equivalence_fixed_chunk_sizes[0]),
+        .supports_pause = 1,
+        .pause_kind = PAUSE_NONE,
+    };
+    plans[plan_count++] = (FeedPlan){
+        .name = "irregular byte chunks",
+        .mode = FEED_IRREGULAR_CHUNKS,
+        .chunk_sizes = equivalence_irregular_chunk_sizes,
+        .chunk_size_count
+        = sizeof(equivalence_irregular_chunk_sizes)
+          / sizeof(equivalence_irregular_chunk_sizes[0]),
+        .supports_pause = 1,
+        .pause_kind = PAUSE_NONE,
+    };
+    plans[plan_count++] = (FeedPlan){
+        .name = "irregular byte chunks plus empty final block",
+        .mode = FEED_IRREGULAR_CHUNKS,
+        .chunk_sizes = equivalence_irregular_chunk_sizes,
+        .chunk_size_count
+        = sizeof(equivalence_irregular_chunk_sizes)
+          / sizeof(equivalence_irregular_chunk_sizes[0]),
+        .send_empty_final_block = 1,
+        .supports_pause = 0,
+        .pause_kind = PAUSE_NONE,
+    };
+
+    // Keep one byte for the empty final-block case. This makes the parser
+    // remain active after the first feed so every supported callback can still
+    // request a resumable suspension before the terminating XML_Parse(..., 1).
+    if ((input_length > 1)
+        && (document->expected_error == XML_ERROR_NONE)) {
+      plans[plan_count++] = (FeedPlan){
+          .name = "split before empty final block",
+          .mode = FEED_SPLIT,
+          .split_at = input_length - 1,
+          .send_empty_final_block = 1,
+          .supports_pause = 1,
+          .pause_kind = PAUSE_NONE,
+      };
+    }
+
+    for (size_t i = 0; i < sizeof(split_points) / sizeof(split_points[0]);
+         i++) {
+      if (split_points[i] > input_length) {
+        continue;
+      }
+      plans[plan_count++] = (FeedPlan){
+          .name = "split at selected byte",
+          .mode = FEED_SPLIT,
+          .split_at = split_points[i],
+          .supports_pause = split_points[i] != 0,
+          .pause_kind = PAUSE_NONE,
+      };
+    }
+    assert_true(plan_count < sizeof(plans) / sizeof(plans[0]));
+
+    ParseTrace baseline;
+    parse_trace_init(&baseline, PAUSE_NONE);
+    XML_Parser baseline_parser = create_equivalence_parser(&baseline.log);
+    run_equivalence_feed(&baseline, baseline_parser, document->input,
+                         input_length, &plans[0]);
+
+    set_subtest("%s baseline", document->name);
+    assert_true(baseline.log.event_count
+                == document->expected_event_count);
+    assert_true(baseline.result.error_code
+                == document->expected_error);
+    assert_true(baseline.result.return_status
+                == (document->expected_error == XML_ERROR_NONE
+                        ? XML_STATUS_OK
+                        : XML_STATUS_ERROR));
+    assert_true(baseline.result.parsing
+                == (document->expected_error == XML_ERROR_NONE
+                        ? XML_FINISHED
+                        : XML_PARSING));
+    assert_true(baseline.result.final_buffer == XML_TRUE);
+    assert_true(baseline.result.byte_index >= 0);
+
+    for (size_t plan_index = 1; plan_index < plan_count; plan_index++) {
+      for (size_t pause_index = 0;
+           pause_index < sizeof(pause_kinds) / sizeof(pause_kinds[0]);
+           pause_index++) {
+        FeedPlan plan = plans[plan_index];
+        ParseTrace trace;
+
+        if (! plan.supports_pause) {
+          continue;
+        }
+
+        plan.pause_kind = pause_kinds[pause_index];
+        set_subtest("%s / %s / pause %d", document->name, plan.name,
+                    (int)plan.pause_kind);
+
+        parse_trace_init(&trace, plan.pause_kind);
+        XML_Parser parser = create_equivalence_parser(&trace.log);
+        run_equivalence_feed(&trace, parser, document->input,
+                             input_length, &plan);
+
+        assert_events_equal(&trace, &baseline);
+        assert_parser_result_equal(&trace, &baseline);
+        assert_feed_shape(&trace, &plan, input_length);
+        assert_pause_matches_plan(&trace, &plan, &baseline);
+
+        XML_ParserFree(parser);
+        parse_trace_free(&trace);
+      }
+    }
+
+    XML_ParserFree(baseline_parser);
+    parse_trace_free(&baseline);
+  }
+}
+END_TEST
+
+#endif /* XML_NS */
 
 #if defined(__has_feature)
 #  if __has_feature(undefined_behavior_sanitizer)
@@ -1314,6 +2029,9 @@ make_miscellaneous_test_case(Suite *s) {
   tcase_add_test(tc_misc, test_misc_utf16le);
   tcase_add_test(tc_misc, test_misc_stop_during_end_handler_issue_240_1);
   tcase_add_test(tc_misc, test_misc_stop_during_end_handler_issue_240_2);
+#ifdef XML_NS
+  tcase_add_test(tc_misc, test_misc_chunk_and_suspend_event_equivalence);
+#endif
   tcase_add_test__ifdef_xml_dtd(
       tc_misc, test_misc_deny_internal_entity_closing_doctype_issue_317);
   tcase_add_test(tc_misc, test_misc_tag_mismatch_reset_leak);

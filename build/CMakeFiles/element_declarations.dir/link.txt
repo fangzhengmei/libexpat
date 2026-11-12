@@ -1,0 +1,1 @@
+/usr/bin/cc   -Wstrict-aliasing=3 -Wimplicit-fallthrough -fvisibility=hidden -g CMakeFiles/element_declarations.dir/examples/element_declarations.c.o -o examples/element_declarations  libexpat.a -lm 
