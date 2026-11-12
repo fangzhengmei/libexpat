@@ -46,6 +46,7 @@
 #include "expat_config.h"
 
 #include <math.h> /* NAN, INFINITY */
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -55,9 +56,193 @@
 #include "minicheck.h"
 #include "chardata.h"
 #include "handlers.h"
+#include "xcs.h"
 #include "acc_tests.h"
 
 #if XML_GE == 1
+struct ExternalBudgetData {
+  int handlerCalls;
+  int childCreations;
+};
+
+static int XMLCALL
+external_budget_handler(XML_Parser parser, const XML_Char *context,
+                        const XML_Char *base, const XML_Char *systemId,
+                        const XML_Char *publicId) {
+  struct ExternalBudgetData *const data = XML_GetUserData(parser);
+  const char *text;
+
+  UNUSED_P(base);
+  UNUSED_P(publicId);
+
+  data->handlerCalls++;
+  if (xcscmp(systemId, XCS("outer.ent")) == 0) {
+    text = "<!DOCTYPE r [<!ENTITY inner SYSTEM 'inner.ent'>]>"
+           "<r>&inner;</r>";
+  } else if (xcscmp(systemId, XCS("inner.ent")) == 0) {
+    text = "<!ENTITY e 'value'><r>&e;</r>";
+  } else {
+    text = "<!ENTITY e 'value'><r>&e;</r>";
+  }
+
+  XML_Parser child = XML_ExternalEntityParserCreate(parser, context, NULL);
+  if (child == NULL)
+    return XML_STATUS_ERROR;
+
+  data->childCreations++;
+  const enum XML_Status status
+      = XML_Parse_SINGLE_BYTES(child, text, (int)strlen(text), XML_TRUE);
+  XML_ParserFree(child);
+  return status;
+}
+
+static XML_Parser
+create_budget_parser(struct ExternalBudgetData *data, XML_Bool shared,
+                     XML_Bool useAllocTracker) {
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  XML_Bool sharedValue = XML_FALSE;
+  assert_true(XML_GetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  &sharedValue)
+              == XML_PROP_ERROR_NONE);
+  assert_true(sharedValue == XML_FALSE);
+
+  XML_SetUserData(parser, data);
+  XML_SetExternalEntityRefHandler(parser, external_budget_handler);
+  assert_true(XML_SetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  shared)
+              == XML_PROP_ERROR_NONE);
+  assert_true(XML_GetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  &sharedValue)
+              == XML_PROP_ERROR_NONE);
+  assert_true(sharedValue == shared);
+
+  if (useAllocTracker) {
+    assert_true(XML_SetAllocTrackerMaximumAmplification(parser, 1.0f)
+                == XML_TRUE);
+    assert_true(XML_SetAllocTrackerActivationThreshold(parser, 0)
+                == XML_TRUE);
+  } else {
+    assert_true(XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+                    parser, 1.0f)
+                == XML_TRUE);
+    assert_true(XML_SetBillionLaughsAttackProtectionActivationThreshold(
+                    parser, 0)
+                == XML_TRUE);
+  }
+  return parser;
+}
+
+START_TEST(test_external_entity_resource_budget_property) {
+  XML_Parser parser = XML_ParserCreate(NULL);
+  XML_Parser child;
+  XML_Bool value = XML_TRUE;
+
+  assert_true(parser != NULL);
+  assert_true(XML_SetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  42)
+              == XML_PROP_ERROR_INVALID_VALUE);
+  assert_true(XML_SetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  XML_TRUE)
+              == XML_PROP_ERROR_NONE);
+
+  child = XML_ExternalEntityParserCreate(parser, XCS("entity"), NULL);
+  assert_true(child != NULL);
+  assert_true(XML_SetPropertyBool(
+                  child, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  XML_TRUE)
+              == XML_PROP_ERROR_PARSER_NOT_ROOT);
+  XML_ParserFree(child);
+  XML_ParserFree(parser);
+
+  assert_true(XML_SetPropertyBool(
+                  NULL, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  XML_TRUE)
+              == XML_PROP_ERROR_PARSER_NULL);
+  assert_true(XML_GetPropertyBool(
+                  NULL, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  &value)
+              == XML_PROP_ERROR_PARSER_NULL);
+
+  parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  assert_true(XML_SetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  XML_TRUE)
+              == XML_PROP_ERROR_NONE);
+  assert_true(XML_ParserReset(parser, NULL) == XML_TRUE);
+  value = XML_TRUE;
+  assert_true(XML_GetPropertyBool(
+                  parser, XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED,
+                  &value)
+              == XML_PROP_ERROR_NONE);
+  assert_true(value == XML_FALSE);
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_external_entity_resource_budget_nested_entities) {
+  if (g_chunkSize != 0 || g_reparseDeferralEnabledDefault)
+    return;
+
+  const char doc[] = "<!DOCTYPE r [<!ENTITY outer SYSTEM 'outer.ent'>]>"
+                     "<r>&outer;</r>";
+  struct ExternalBudgetData data;
+
+  for (int shared = 0; shared <= 1; shared++) {
+    data.handlerCalls = 0;
+    data.childCreations = 0;
+    XML_Parser parser = create_budget_parser(
+        &data, shared ? XML_TRUE : XML_FALSE, XML_FALSE);
+    const enum XML_Status status
+        = XML_Parse_SINGLE_BYTES(parser, doc, (int)sizeof(doc) - 1,
+                                 XML_TRUE);
+
+    assert_true(status == XML_STATUS_ERROR);
+    assert_true(data.handlerCalls >= 1);
+    assert_true(data.childCreations == data.handlerCalls);
+    XML_ParserFree(parser);
+  }
+}
+END_TEST
+
+START_TEST(test_external_entity_resource_budget_creation_failure) {
+  if (g_chunkSize != 0 || g_reparseDeferralEnabledDefault)
+    return;
+
+  const char doc[] = "<!DOCTYPE r [<!ENTITY ext SYSTEM 'entity.ent'>]>"
+                     "<r>&ext;</r>";
+  struct ExternalBudgetData data;
+
+  for (int shared = 0; shared <= 1; shared++) {
+    data.handlerCalls = 0;
+    data.childCreations = 0;
+    XML_Parser parser = create_budget_parser(
+        &data, shared ? XML_TRUE : XML_FALSE, XML_TRUE);
+    const enum XML_Status status
+        = XML_Parse_SINGLE_BYTES(parser, doc, (int)sizeof(doc) - 1,
+                                 XML_TRUE);
+
+    if (status == XML_STATUS_ERROR) {
+      assert_true(data.handlerCalls >= 0);
+    } else {
+      assert_true(status == XML_STATUS_OK);
+    }
+    assert_true(data.childCreations == data.handlerCalls);
+
+    XML_ParsingStatus parsingStatus;
+    XML_GetParsingStatus(parser, &parsingStatus);
+    XML_ParserFree(parser);
+  }
+}
+END_TEST
+
 START_TEST(test_accounting_precision) {
   struct AccountingTestCase cases[] = {
       {"<e/>", NULL, NULL, 0},
@@ -522,6 +707,12 @@ make_accounting_test_case(Suite *s) {
   tcase_add_test(tc_accounting, test_helper_unsigned_char_to_printable);
   tcase_add_test__ifdef_xml_dtd(tc_accounting,
                                 test_amplification_isolated_external_parser);
+  tcase_add_test__ifdef_xml_dtd(
+      tc_accounting, test_external_entity_resource_budget_property);
+  tcase_add_test__ifdef_xml_dtd(
+      tc_accounting, test_external_entity_resource_budget_nested_entities);
+  tcase_add_test__ifdef_xml_dtd(
+      tc_accounting, test_external_entity_resource_budget_creation_failure);
   tcase_add_test(tc_accounting, test_amplification_reset_neutrality);
 #else
   UNUSED_P(s);

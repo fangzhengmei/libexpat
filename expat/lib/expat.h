@@ -1099,6 +1099,12 @@ enum XML_Parser_Property {
   XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION = 4, // of type `double`
 #  endif
   XML_PROP_REPARSE_DEFERRAL_ENABLED = 5, // of type `XML_Bool`
+#  if defined(XML_GE) && XML_GE == 1
+  /* When true, external entity child parsers consume the document root
+   * parser's memory and entity-expansion budgets. Defaults to false so
+   * callers that do not opt in retain the previous behavior. */
+  XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED = 6, // of type `XML_Bool`
+#  endif
   /* more properties upcoming here */
 };
 

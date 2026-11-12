@@ -612,6 +612,10 @@ static XML_Parser parserCreate(const XML_Char *encodingName,
                                const XML_Char *nameSep, DTD *dtd,
                                XML_Parser parentParser);
 
+#if XML_GE == 1
+static XML_Bool hasSharedExternalEntityResourceBudget(XML_Parser parser);
+#endif /* XML_GE == 1 */
+
 static void parserInit(XML_Parser parser, const XML_Char *encodingName,
                        bool isReset);
 
@@ -837,6 +841,7 @@ struct XML_ParserStruct {
   ACCOUNTING m_accounting;
   MALLOC_TRACKER m_alloc_tracker;
   ENTITY_STATS m_entity_stats;
+  XML_Bool m_sharedExternalEntityResourceBudget;
 #endif
   XML_Bool m_reenter;
   unsigned m_handlerCallDepth;
@@ -1309,6 +1314,43 @@ startParsing(XML_Parser parser) {
   return XML_TRUE;
 }
 
+#if XML_GE == 1
+static XML_Bool
+hasSharedExternalEntityResourceBudget(XML_Parser parser) {
+  XML_Parser rootParser = parser;
+  while (rootParser->m_parentParser != NULL)
+    rootParser = rootParser->m_parentParser;
+
+  return rootParser->m_sharedExternalEntityResourceBudget;
+}
+
+static void
+recordRootParserStructAllocation(XML_Parser parser) {
+  const size_t increase = sizeof(size_t) + EXPAT_MALLOC_PADDING
+                          + sizeof(struct XML_ParserStruct);
+  const XML_Parser rootParser
+      = getRootParserOf(parser, NULL);
+
+  assert(rootParser->m_parentParser == NULL);
+  assert(SIZE_MAX - rootParser->m_alloc_tracker.bytesAllocated
+         >= increase);
+  rootParser->m_alloc_tracker.bytesAllocated += increase;
+
+  if (rootParser->m_alloc_tracker.debugLevel >= 2) {
+    if (rootParser->m_alloc_tracker.bytesAllocated
+        > rootParser->m_alloc_tracker.peakBytesAllocated) {
+      rootParser->m_alloc_tracker.peakBytesAllocated
+          = rootParser->m_alloc_tracker.bytesAllocated;
+    }
+
+    expat_heap_stat(rootParser, '+', increase,
+                    rootParser->m_alloc_tracker.bytesAllocated,
+                    rootParser->m_alloc_tracker.peakBytesAllocated,
+                    __LINE__);
+  }
+}
+#endif /* XML_GE == 1 */
+
 XML_Parser XMLCALL
 XML_ParserCreate_MM(const XML_Char *encodingName,
                     const XML_Memory_Handling_Suite *memsuite,
@@ -1323,10 +1365,13 @@ parserCreate(const XML_Char *encodingName,
   XML_Parser parser = NULL;
 
 #if XML_GE == 1
-  const size_t increase
-      = sizeof(size_t) + EXPAT_MALLOC_PADDING + sizeof(struct XML_ParserStruct);
+  const XML_Bool shareResourceBudget
+      = (parentParser != NULL)
+        && hasSharedExternalEntityResourceBudget(parentParser);
 
-  if (parentParser != NULL) {
+  if (shareResourceBudget) {
+    const size_t increase = sizeof(size_t) + EXPAT_MALLOC_PADDING
+                            + sizeof(struct XML_ParserStruct);
     const XML_Parser rootParser = getRootParserOf(parentParser, NULL);
     if (! expat_heap_increase_tolerable(rootParser, increase, __LINE__)) {
       return NULL;
@@ -1381,39 +1426,24 @@ parserCreate(const XML_Char *encodingName,
 #if XML_GE == 1
   // Initialize .m_alloc_tracker
   memset(&parser->m_alloc_tracker, 0, sizeof(MALLOC_TRACKER));
-  if (parentParser == NULL) {
-    parser->m_alloc_tracker.debugLevel = getDebugLevel("EXPAT_MALLOC_DEBUG", 0);
-    parser->m_alloc_tracker.maximumAmplificationFactor
-        = EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
-    parser->m_alloc_tracker.activationThresholdBytes
-        = EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+  parser->m_alloc_tracker.debugLevel = getDebugLevel("EXPAT_MALLOC_DEBUG", 0);
+  parser->m_alloc_tracker.maximumAmplificationFactor
+      = EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+  parser->m_alloc_tracker.activationThresholdBytes
+      = EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
 
+  if (parentParser != NULL) {
+    parser->m_parentParser = parentParser;
+    parser->m_sharedExternalEntityResourceBudget
+        = hasSharedExternalEntityResourceBudget(parser);
+  } else {
     // NOTE: This initialization needs to come this early because these fields
     //       are read by allocation tracking code
     parser->m_parentParser = NULL;
     parser->m_accounting.countBytesDirect = 0;
-  } else {
-    parser->m_parentParser = parentParser;
+    parser->m_sharedExternalEntityResourceBudget = XML_FALSE;
   }
-
-  // Record XML_ParserStruct allocation we did a few lines up before
-  const XML_Parser rootParser = getRootParserOf(parser, NULL);
-  assert(rootParser->m_parentParser == NULL);
-  assert(SIZE_MAX - rootParser->m_alloc_tracker.bytesAllocated >= increase);
-  rootParser->m_alloc_tracker.bytesAllocated += increase;
-
-  // Report on allocation
-  if (rootParser->m_alloc_tracker.debugLevel >= 2) {
-    if (rootParser->m_alloc_tracker.bytesAllocated
-        > rootParser->m_alloc_tracker.peakBytesAllocated) {
-      rootParser->m_alloc_tracker.peakBytesAllocated
-          = rootParser->m_alloc_tracker.bytesAllocated;
-    }
-
-    expat_heap_stat(rootParser, '+', increase,
-                    rootParser->m_alloc_tracker.bytesAllocated,
-                    rootParser->m_alloc_tracker.peakBytesAllocated, __LINE__);
-  }
+  recordRootParserStructAllocation(parser);
 #else
   parser->m_parentParser = NULL;
 #endif // XML_GE == 1
@@ -1594,6 +1624,10 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_entity_stats.maximumDepthSeen = 0;
   if (! isReset)
     parser->m_entity_stats.debugLevel = getDebugLevel("EXPAT_ENTITY_DEBUG", 0);
+  parser->m_sharedExternalEntityResourceBudget
+      = (parser->m_parentParser != NULL)
+            ? hasSharedExternalEntityResourceBudget(parser)
+            : XML_FALSE;
 #else
   UNUSED_P(isReset);
 #endif
@@ -3330,6 +3364,22 @@ XML_SetAllocTrackerActivationThreshold(
              ? XML_TRUE
              : XML_FALSE;
 }
+
+static enum XML_Prop_Error
+setExternalEntityResourceBudgetShared(XML_Parser parser, XML_Bool enabled) {
+  if (parser == NULL)
+    return XML_PROP_ERROR_PARSER_NULL;
+
+  if (parser->m_parentParser != NULL)
+    return XML_PROP_ERROR_PARSER_NOT_ROOT;
+
+  if (enabled != XML_TRUE && enabled != XML_FALSE)
+    return XML_PROP_ERROR_INVALID_VALUE;
+
+  parser->m_sharedExternalEntityResourceBudget = enabled;
+
+  return XML_PROP_ERROR_NONE;
+}
 #endif /* XML_GE == 1 */
 
 static enum XML_Prop_Error
@@ -3368,6 +3418,10 @@ XML_SetPropertyBool(XML_Parser parser, enum XML_Parser_Property property,
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return setReparseDeferralEnabled(parser, value);
+#if XML_GE == 1
+  case XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED:
+    return setExternalEntityResourceBudgetShared(parser, value);
+#endif
   default:
     return XML_PROP_ERROR_INVALID_KEY;
   }
@@ -3394,6 +3448,7 @@ XML_SetPropertyDouble(XML_Parser parser, enum XML_Parser_Property property,
                                                                 (float)value);
   case XML_PROP_ALLOC_TRACKER_ACTIVATION_THRESHOLD:
   case XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD:
+  case XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED:
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return XML_PROP_ERROR_INVALID_TYPE;
@@ -3424,6 +3479,7 @@ XML_SetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
         parser, (unsigned long long)value);
   case XML_PROP_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION:
   case XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION:
+  case XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED:
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return XML_PROP_ERROR_INVALID_TYPE;
@@ -3454,6 +3510,11 @@ XML_GetPropertyBool(XML_Parser parser, enum XML_Parser_Property property,
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     *value = parser->m_reparseDeferralEnabled;
     break;
+#if XML_GE == 1
+  case XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED:
+    *value = parser->m_sharedExternalEntityResourceBudget;
+    break;
+#endif
   default:
     return XML_PROP_ERROR_INVALID_KEY;
   }
@@ -3480,6 +3541,7 @@ XML_GetPropertyDouble(XML_Parser parser, enum XML_Parser_Property property,
     break;
   case XML_PROP_ALLOC_TRACKER_ACTIVATION_THRESHOLD:
   case XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD:
+  case XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED:
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return XML_PROP_ERROR_INVALID_TYPE;
@@ -3509,6 +3571,7 @@ XML_GetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
     break;
   case XML_PROP_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION:
   case XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION:
+  case XML_PROP_EXTERNAL_ENTITY_RESOURCE_BUDGET_SHARED:
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return XML_PROP_ERROR_INVALID_TYPE;
