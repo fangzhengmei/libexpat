@@ -3453,6 +3453,8 @@ enum XML_Parser_Property {
   XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION = 4, // of type `double`
 #  endif
   XML_PROP_REPARSE_DEFERRAL_ENABLED = 5, // of type `XML_Bool`
+  /* Added in Expat 2.10.0. */
+  XML_PROP_MAXIMUM_TAG_DEPTH = 6, // of type `uint64_t`, 0 disables the limit
   /* more properties upcoming here */
 };</pre>
       <h4 id="XML_Prop_Error">
@@ -3599,6 +3601,11 @@ XML_GetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
             "#XML_SetBillionLaughsAttackProtectionActivationThreshold">billion laughs
             attack protection</a>
           </li>
+
+          <li>
+            <code>XML_PROP_MAXIMUM_TAG_DEPTH</code> — the maximum number of
+            simultaneously open elements, or <code>0</code> when the limit is disabled
+          </li>
         </ul>
 
         <p>
@@ -3736,6 +3743,12 @@ XML_SetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
             threshold in bytes with <a href=
             "#XML_SetBillionLaughsAttackProtectionActivationThreshold">billion laughs
             attack protection</a>
+          </li>
+
+          <li>
+            <code>XML_PROP_MAXIMUM_TAG_DEPTH</code> — limit the number of
+            simultaneously open elements to <code>value</code>; a value of
+            <code>0</code> disables the limit and restores the default behavior
           </li>
         </ul>
 

@@ -41,6 +41,86 @@ __  __            _
 
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+struct TagDepthCounters {
+  int startElementEvents;
+  int endElementEvents;
+};
+
+static void XMLCALL
+tag_depth_start_handler(void *userData, const XML_Char *name,
+                        const XML_Char **atts) {
+  struct TagDepthCounters *const counters = userData;
+  UNUSED_P(name);
+  UNUSED_P(atts);
+  counters->startElementEvents++;
+}
+
+static void XMLCALL
+tag_depth_end_handler(void *userData, const XML_Char *name) {
+  struct TagDepthCounters *const counters = userData;
+  UNUSED_P(name);
+  counters->endElementEvents++;
+}
+
+// Build a document with the given number of nested elements.
+static char *
+make_nested_document(unsigned int depth) {
+  static char document[4096];
+  size_t offset = 0;
+  for (unsigned int level = 0; level < depth; level++) {
+    int written = snprintf(document + offset, sizeof(document) - offset,
+                           "<a%u>", level);
+    assert_true(written > 0);
+    assert_true((size_t)written < sizeof(document) - offset);
+    offset += (size_t)written;
+  }
+  for (unsigned int level = depth; level > 0; level--) {
+    int written = snprintf(document + offset, sizeof(document) - offset,
+                           "</a%u>", level - 1);
+    assert_true(written > 0);
+    assert_true((size_t)written < sizeof(document) - offset);
+    offset += (size_t)written;
+  }
+  return document;
+}
+
+struct ExternalEntityDepthData {
+  const char *entityText;
+  enum XML_Error expectedError;
+};
+
+static int XMLCALL
+tag_depth_external_entity_handler(XML_Parser parser, const XML_Char *context,
+                                  const XML_Char *base,
+                                  const XML_Char *systemId,
+                                  const XML_Char *publicId) {
+  struct ExternalEntityDepthData *const data = XML_GetUserData(parser);
+  UNUSED_P(base);
+  UNUSED_P(systemId);
+  UNUSED_P(publicId);
+
+  XML_Parser subParser
+      = XML_ExternalEntityParserCreate(parser, context, NULL);
+  assert_true(subParser != NULL);
+
+  enum XML_Status status
+      = XML_Parse_SINGLE_BYTES(subParser, data->entityText,
+                               (int)strlen(data->entityText), XML_TRUE);
+  const enum XML_Error errorCode = XML_GetErrorCode(subParser);
+  XML_ParserFree(subParser);
+
+  if (data->expectedError == XML_ERROR_NONE) {
+    assert_true(status == XML_STATUS_OK);
+    assert_true(errorCode == XML_ERROR_NONE);
+    return XML_STATUS_OK;
+  }
+  assert_true(status == XML_STATUS_ERROR);
+  assert_true(errorCode == data->expectedError);
+  return XML_STATUS_ERROR;
+}
 
 enum ExpectedType {
   TYPE_BOOL,
@@ -112,6 +192,13 @@ START_TEST(test_props_getter_defaults) {
                                   &reparseDeferralEnabled)
               == XML_PROP_ERROR_NONE);
   assert_true(reparseDeferralEnabled == g_reparseDeferralEnabledDefault);
+
+  // Case XML_PROP_MAXIMUM_TAG_DEPTH (defaults to "disabled", i.e. 0)
+  uint64_t maximumTagDepth = 123;
+  assert_true(XML_GetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    &maximumTagDepth)
+              == XML_PROP_ERROR_NONE);
+  assert_true(maximumTagDepth == 0);
 
   // Case XML_PROP_INVALID
   XML_Bool dummyBool = XML_FALSE;
@@ -231,6 +318,7 @@ START_TEST(test_props_getter_error_invalid_type) {
       {XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, TYPE_DOUBLE},
 #endif
       {XML_PROP_REPARSE_DEFERRAL_ENABLED, TYPE_BOOL},
+      {XML_PROP_MAXIMUM_TAG_DEPTH, TYPE_UINT64},
   };
 
   XML_Bool dummyBool = XML_FALSE;
@@ -324,6 +412,7 @@ START_TEST(test_props_setter_effective) {
       {XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, TYPE_DOUBLE},
 #endif
       {XML_PROP_REPARSE_DEFERRAL_ENABLED, TYPE_BOOL},
+      {XML_PROP_MAXIMUM_TAG_DEPTH, TYPE_UINT64},
   };
 
   XML_Parser parser = XML_ParserCreate(NULL);
@@ -422,6 +511,7 @@ START_TEST(test_props_setter_error_parser_null) {
       {XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, TYPE_DOUBLE},
 #endif
       {XML_PROP_REPARSE_DEFERRAL_ENABLED, TYPE_BOOL},
+      {XML_PROP_MAXIMUM_TAG_DEPTH, TYPE_UINT64},
   };
 
   XML_Parser parserNonNull = XML_ParserCreate(NULL);
@@ -487,6 +577,7 @@ START_TEST(test_props_setter_error_parser_not_root) {
       {XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, TYPE_DOUBLE, true},
 #endif
       {XML_PROP_REPARSE_DEFERRAL_ENABLED, TYPE_BOOL, false},
+      {XML_PROP_MAXIMUM_TAG_DEPTH, TYPE_UINT64, true},
   };
 
   XML_Parser parser = XML_ParserCreate(NULL);
@@ -554,6 +645,7 @@ START_TEST(test_props_setter_error_parser_started) {
       {XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, TYPE_DOUBLE},
 #endif
       {XML_PROP_REPARSE_DEFERRAL_ENABLED, TYPE_BOOL},
+      {XML_PROP_MAXIMUM_TAG_DEPTH, TYPE_UINT64},
   };
 
   XML_Parser parser = XML_ParserCreate(NULL);
@@ -683,6 +775,7 @@ START_TEST(test_props_setter_error_invalid_type) {
       {XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION, TYPE_DOUBLE},
 #endif
       {XML_PROP_REPARSE_DEFERRAL_ENABLED, TYPE_BOOL},
+      {XML_PROP_MAXIMUM_TAG_DEPTH, TYPE_UINT64},
   };
 
   XML_Parser parser = XML_ParserCreate(NULL);
@@ -769,6 +862,304 @@ START_TEST(test_props_setter_error_invalid_value) {
 }
 END_TEST
 
+START_TEST(test_props_maximum_tag_depth_default_disabled) {
+  // Without opting in, the historical (unlimited) behavior must be kept.
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  uint64_t limit = 123;
+  assert_true(XML_GetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    &limit)
+              == XML_PROP_ERROR_NONE);
+  assert_true(limit == 0);
+
+  struct TagDepthCounters counters = {0, 0};
+  XML_SetUserData(parser, &counters);
+  XML_SetStartElementHandler(parser, tag_depth_start_handler);
+  XML_SetEndElementHandler(parser, tag_depth_end_handler);
+
+  char *const document = make_nested_document(50);
+  assert_true(XML_Parse_SINGLE_BYTES(parser, document, (int)strlen(document),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(counters.startElementEvents == 50);
+  assert_true(counters.endElementEvents == 50);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_props_maximum_tag_depth_boundary) {
+  // A document whose depth is exactly the limit must parse, while a
+  // document one level deeper must fail with a consistent error.
+  const unsigned int depths[] = {1, 2, 3, 10};
+
+  for (size_t i = 0; i < sizeof(depths) / sizeof(depths[0]); i++) {
+    const unsigned int depth = depths[i];
+    set_subtest("depth %u", depth);
+
+    // Exactly at the limit: parses and reports every event.
+    {
+      XML_Parser parser = XML_ParserCreate(NULL);
+      assert_true(parser != NULL);
+      assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                        depth)
+                  == XML_PROP_ERROR_NONE);
+
+      struct TagDepthCounters counters = {0, 0};
+      XML_SetUserData(parser, &counters);
+      XML_SetStartElementHandler(parser, tag_depth_start_handler);
+      XML_SetEndElementHandler(parser, tag_depth_end_handler);
+
+      char *const document = make_nested_document(depth);
+      assert_true(XML_Parse_SINGLE_BYTES(parser, document,
+                                         (int)strlen(document), XML_TRUE)
+                  == XML_STATUS_OK);
+      assert_true((unsigned int)counters.startElementEvents == depth);
+      assert_true((unsigned int)counters.endElementEvents == depth);
+      XML_ParserFree(parser);
+    }
+
+    // One level beyond the limit: fails, and the offending start tag is
+    // never reported as an event.
+    {
+      XML_Parser parser = XML_ParserCreate(NULL);
+      assert_true(parser != NULL);
+      assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                        depth)
+                  == XML_PROP_ERROR_NONE);
+
+      struct TagDepthCounters counters = {0, 0};
+      XML_SetUserData(parser, &counters);
+      XML_SetStartElementHandler(parser, tag_depth_start_handler);
+      XML_SetEndElementHandler(parser, tag_depth_end_handler);
+
+      char *const document = make_nested_document(depth + 1);
+      assert_true(XML_Parse_SINGLE_BYTES(parser, document,
+                                         (int)strlen(document), XML_TRUE)
+                  == XML_STATUS_ERROR);
+      assert_true(XML_GetErrorCode(parser)
+                  == XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED);
+      // Only the `depth` elements within the limit produced events.
+      assert_true((unsigned int)counters.startElementEvents == depth);
+      assert_true(counters.endElementEvents == 0);
+      XML_ParserFree(parser);
+    }
+  }
+}
+END_TEST
+
+START_TEST(test_props_maximum_tag_depth_empty_elements) {
+  // Empty elements count as one level of nesting just like start/end
+  // tag pairs.
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 1)
+              == XML_PROP_ERROR_NONE);
+
+  struct TagDepthCounters counters = {0, 0};
+  XML_SetUserData(parser, &counters);
+  XML_SetStartElementHandler(parser, tag_depth_start_handler);
+  XML_SetEndElementHandler(parser, tag_depth_end_handler);
+
+  const char *const atLimit = "<a/>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, atLimit,
+                                     (int)strlen(atLimit), XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(counters.startElementEvents == 1);
+  assert_true(counters.endElementEvents == 1);
+
+  assert_true(XML_ParserReset(parser, NULL) == XML_TRUE);
+  XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 1);
+  XML_SetUserData(parser, &counters);
+  XML_SetStartElementHandler(parser, tag_depth_start_handler);
+  XML_SetEndElementHandler(parser, tag_depth_end_handler);
+  counters.startElementEvents = 0;
+  counters.endElementEvents = 0;
+
+  const char *const beyondLimit = "<a><b/></a>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, beyondLimit,
+                                     (int)strlen(beyondLimit), XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(parser)
+              == XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED);
+  // <a> produced events; the offending <b/> did not.
+  assert_true(counters.startElementEvents == 1);
+  assert_true(counters.endElementEvents == 0);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_props_maximum_tag_depth_reset_clears_depth) {
+  // After XML_ParserReset() the depth counter starts at zero again, so
+  // a document at the limit must parse even if a previous document
+  // exceeded it.
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 2)
+              == XML_PROP_ERROR_NONE);
+
+  struct TagDepthCounters counters = {0, 0};
+  XML_SetUserData(parser, &counters);
+  XML_SetStartElementHandler(parser, tag_depth_start_handler);
+  XML_SetEndElementHandler(parser, tag_depth_end_handler);
+
+  char *const tooDeep = make_nested_document(3);
+  assert_true(XML_Parse_SINGLE_BYTES(parser, tooDeep,
+                                     (int)strlen(tooDeep), XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(parser)
+              == XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED);
+
+  assert_true(XML_ParserReset(parser, NULL) == XML_TRUE);
+  // The configured limit itself survives the reset.
+  uint64_t limit = 0;
+  assert_true(XML_GetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    &limit)
+              == XML_PROP_ERROR_NONE);
+  assert_true(limit == 2);
+
+  XML_SetUserData(parser, &counters);
+  XML_SetStartElementHandler(parser, tag_depth_start_handler);
+  XML_SetEndElementHandler(parser, tag_depth_end_handler);
+  counters.startElementEvents = 0;
+  counters.endElementEvents = 0;
+
+  char *const atLimit = make_nested_document(2);
+  assert_true(XML_Parse_SINGLE_BYTES(parser, atLimit,
+                                     (int)strlen(atLimit), XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(counters.startElementEvents == 2);
+  assert_true(counters.endElementEvents == 2);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_props_maximum_tag_depth_relax_to_unlimited) {
+  // Setting the limit back to 0 restores the historical behavior.
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 1)
+              == XML_PROP_ERROR_NONE);
+  assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 0)
+              == XML_PROP_ERROR_NONE);
+
+  uint64_t limit = 1;
+  assert_true(XML_GetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    &limit)
+              == XML_PROP_ERROR_NONE);
+  assert_true(limit == 0);
+
+  char *const document = make_nested_document(20);
+  assert_true(XML_Parse_SINGLE_BYTES(parser, document,
+                                     (int)strlen(document), XML_TRUE)
+              == XML_STATUS_OK);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_props_maximum_tag_depth_subparser_inherits) {
+  // The limit is document-wide: elements parsed by external entity
+  // subparsers count towards the same depth as the parent document.
+  const char *const document
+      = "<!DOCTYPE a [<!ENTITY e SYSTEM 'entity.ent'>]><a>&e;</a>";
+
+  // Parent <a> is at depth 1; entity content "<x><y/></x>" reaches
+  // depth 3 in total.
+  struct ExternalEntityDepthData passData = {
+      "<x><y/></x>",
+      XML_ERROR_NONE,
+  };
+  struct ExternalEntityDepthData failData = {
+      "<x><y/></x>",
+      XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED,
+  };
+
+  // Limit 3: the deepest element (y) is exactly at the limit.
+  {
+    XML_Parser parser = XML_ParserCreate(NULL);
+    assert_true(parser != NULL);
+    assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 3)
+                == XML_PROP_ERROR_NONE);
+    XML_SetUserData(parser, &passData);
+    XML_SetExternalEntityRefHandler(parser,
+                                    tag_depth_external_entity_handler);
+    assert_true(XML_Parse_SINGLE_BYTES(parser, document,
+                                       (int)strlen(document), XML_TRUE)
+                == XML_STATUS_OK);
+    XML_ParserFree(parser);
+  }
+
+  // Limit 2: element y (depth 3) breaches the limit inside the
+  // subparser, and the root parser reports the external entity failure.
+  {
+    XML_Parser parser = XML_ParserCreate(NULL);
+    assert_true(parser != NULL);
+    assert_true(XML_SetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 2)
+                == XML_PROP_ERROR_NONE);
+    XML_SetUserData(parser, &failData);
+    XML_SetExternalEntityRefHandler(parser,
+                                    tag_depth_external_entity_handler);
+    assert_true(XML_Parse_SINGLE_BYTES(parser, document,
+                                       (int)strlen(document), XML_TRUE)
+                == XML_STATUS_ERROR);
+    assert_true(XML_GetErrorCode(parser)
+                == XML_ERROR_EXTERNAL_ENTITY_HANDLING);
+    XML_ParserFree(parser);
+  }
+}
+END_TEST
+
+START_TEST(test_props_maximum_tag_depth_setter_errors) {
+  // This test does not parse, so a single chunk-size run is enough.
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  // Wrong getter/setter types are rejected.
+  assert_true(XML_SetPropertyBool(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                  XML_TRUE)
+              == XML_PROP_ERROR_INVALID_TYPE);
+  assert_true(XML_SetPropertyDouble(parser, XML_PROP_MAXIMUM_TAG_DEPTH, 1.0)
+              == XML_PROP_ERROR_INVALID_TYPE);
+  XML_Bool dummyBool = XML_FALSE;
+  double dummyDouble = 1.0;
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                  &dummyBool)
+              == XML_PROP_ERROR_INVALID_TYPE);
+  assert_true(XML_GetPropertyDouble(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    &dummyDouble)
+              == XML_PROP_ERROR_INVALID_TYPE);
+  assert_true(XML_GetPropertyUInt64(parser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    NULL)
+              == XML_PROP_ERROR_INVALID_VALUE);
+
+  // The limit can only be configured on the root parser.
+  XML_Parser subParser = XML_ExternalEntityParserCreate(parser, NULL, NULL);
+#if defined(XML_DTD)
+  assert_true(subParser != NULL);
+  assert_true(XML_SetPropertyUInt64(subParser, XML_PROP_MAXIMUM_TAG_DEPTH, 5)
+              == XML_PROP_ERROR_PARSER_NOT_ROOT);
+  // The subparser still sees the root parser's limit.
+  uint64_t limit = 0;
+  assert_true(XML_GetPropertyUInt64(subParser, XML_PROP_MAXIMUM_TAG_DEPTH,
+                                    &limit)
+              == XML_PROP_ERROR_NONE);
+  assert_true(limit == 0);
+  XML_ParserFree(subParser);
+#else
+  assert_true(subParser == NULL);
+#endif
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
 void
 make_props_test_case(Suite *s) {
   TCase *const tc_props = tcase_create("properties tests");
@@ -787,4 +1178,13 @@ make_props_test_case(Suite *s) {
   tcase_add_test(tc_props, test_props_setter_error_invalid_key);
   tcase_add_test(tc_props, test_props_setter_error_invalid_type);
   tcase_add_test(tc_props, test_props_setter_error_invalid_value);
+
+  tcase_add_test(tc_props, test_props_maximum_tag_depth_default_disabled);
+  tcase_add_test(tc_props, test_props_maximum_tag_depth_boundary);
+  tcase_add_test(tc_props, test_props_maximum_tag_depth_empty_elements);
+  tcase_add_test(tc_props, test_props_maximum_tag_depth_reset_clears_depth);
+  tcase_add_test(tc_props, test_props_maximum_tag_depth_relax_to_unlimited);
+  tcase_add_test__ifdef_xml_dtd(tc_props,
+                                test_props_maximum_tag_depth_subparser_inherits);
+  tcase_add_test(tc_props, test_props_maximum_tag_depth_setter_errors);
 }

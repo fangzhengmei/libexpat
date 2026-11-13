@@ -67,6 +67,12 @@ Release 2.10.0 Mon November 2 2026
                     `storeAtts` is doing
            #1453  lib: Document failure to reject bad redefinitions of
                     predefined entities
+           lib: Add optional, document-wide maximum element nesting depth
+                    (property `XML_PROP_MAXIMUM_TAG_DEPTH`, error code
+                    `XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED`) to cap resource
+                    use on untrusted, deeply nested documents; the limit is
+                    disabled by default and inherited by external entity
+                    subparsers
            #1432  tests: Replace `XML_SetHashSalt` with
                     `XML_SetHashSalt16Bytes`
      #1416 #1435  Version info bumped from 14:0:13 (libexpat*.so.1.13.0)

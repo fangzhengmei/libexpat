@@ -139,6 +139,8 @@ enum XML_Error {
   XML_ERROR_AMPLIFICATION_LIMIT_BREACH,
   /* Added in 2.6.4. */
   XML_ERROR_NOT_STARTED,
+  /* Added in 2.10.0. */
+  XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED,
 };
 
 /* Added in 2.9.0. */
@@ -1099,6 +1101,11 @@ enum XML_Parser_Property {
   XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION = 4, // of type `double`
 #  endif
   XML_PROP_REPARSE_DEFERRAL_ENABLED = 5, // of type `XML_Bool`
+  /* Added in Expat 2.10.0.
+   * Maximum nesting depth of elements, measured as the number of
+   * simultaneously open elements; a value of 0 disables the limit.
+   * Empty elements count like a pair of start and end tags. */
+  XML_PROP_MAXIMUM_TAG_DEPTH = 6, // of type `uint64_t`
   /* more properties upcoming here */
 };
 

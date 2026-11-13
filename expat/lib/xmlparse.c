@@ -653,6 +653,15 @@ static void entityTrackingOnScanStop(XML_Parser parser, ENTITY *entity,
 static XML_Parser getRootParserOf(XML_Parser parser,
                                   unsigned int *outLevelDiff);
 
+// Effective number of simultaneously open elements for this parser,
+// counting elements inherited from parent (external entity) parsers.
+static uint64_t getCurrentTagDepth(XML_Parser parser, XML_Parser rootParser);
+
+// Enforce the optional, document-wide maximum element nesting depth.
+// Returns XML_ERROR_NONE when no limit is configured or the depth is
+// still within the limit.
+static enum XML_Error checkMaximumTagDepth(XML_Parser parser);
+
 static unsigned long getDebugLevel(const char *variableName,
                                    unsigned long defaultDebugLevel);
 
@@ -794,6 +803,12 @@ struct XML_ParserStruct {
   OPEN_INTERNAL_ENTITY *m_freeEntities;
   XML_Bool m_defaultExpandInternalEntities;
   int m_tagLevel;
+  // Maximum number of simultaneously open elements allowed across the whole
+  // document (0 disables the limit); only meaningful on the root parser.
+  uint64_t m_maximumTagDepth;
+  // Number of open elements inherited from parent parsers at the time this
+  // (sub)parser was created; 0 for the root parser.
+  uint64_t m_inheritedTagDepth;
   ENTITY *m_declEntity;
   const XML_Char *m_doctypeName;
   const XML_Char *m_doctypeSysid;
@@ -1556,6 +1571,12 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
   parser->m_openValueEntities = NULL;
   parser->m_defaultExpandInternalEntities = XML_TRUE;
   parser->m_tagLevel = 0;
+  parser->m_inheritedTagDepth = 0;
+  if (! isReset) {
+    // 0 disables the limit, i.e. parsing behavior stays unchanged
+    // unless the caller explicitly opts in via XML_SetPropertyUInt64().
+    parser->m_maximumTagDepth = 0;
+  }
   parser->m_tagStack = NULL;
   parser->m_inheritedBindings = NULL;
   parser->m_nSpecifiedAtts = 0;
@@ -1760,6 +1781,7 @@ XML_ExternalEntityParserCreate(XML_Parser oldParser, const XML_Char *context,
   struct sipkey oldhash_secret_salt_128;
   XML_Bool oldhash_secret_salt_set;
   XML_Bool oldReparseDeferralEnabled;
+  uint64_t oldCurrentTagDepth;
 
   /* Validate the oldParser parameter before we pull everything out of it */
   if (oldParser == NULL)
@@ -1807,6 +1829,11 @@ XML_ExternalEntityParserCreate(XML_Parser oldParser, const XML_Char *context,
   oldhash_secret_salt_128 = parser->m_hash_secret_salt_128;
   oldhash_secret_salt_set = parser->m_hash_secret_salt_set;
   oldReparseDeferralEnabled = parser->m_reparseDeferralEnabled;
+  // A subparser starts with one logical open element of its own
+  // (m_tagLevel == 1), so its effective document depth is the parent
+  // parser's current depth plus everything opened from here on.
+  oldCurrentTagDepth
+      = getCurrentTagDepth(parser, getRootParserOf(parser, NULL));
 
 #ifdef XML_DTD
   if (! context)
@@ -1859,6 +1886,10 @@ XML_ExternalEntityParserCreate(XML_Parser oldParser, const XML_Char *context,
   parser->m_hash_secret_salt_set = oldhash_secret_salt_set;
   parser->m_reparseDeferralEnabled = oldReparseDeferralEnabled;
   parser->m_parentParser = oldParser;
+  // Keep one depth metric across parent parser, subparsers and nested
+  // external entities: the subparser continues at the parent's depth.
+  parser->m_inheritedTagDepth = oldCurrentTagDepth;
+  parser->m_maximumTagDepth = oldParser->m_maximumTagDepth;
 #ifdef XML_DTD
   parser->m_paramEntityParsing = oldParamEntityParsing;
   parser->m_prologState.inEntityValue = oldInEntityValue;
@@ -3143,6 +3174,9 @@ XML_ErrorString(enum XML_Error code) {
   /* Added in 2.6.4. */
   case XML_ERROR_NOT_STARTED:
     return XML_L("parser not started");
+  /* Added in 2.10.0. */
+  case XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED:
+    return XML_L("maximum tag depth exceeded");
   }
   return NULL;
 }
@@ -3345,6 +3379,23 @@ setReparseDeferralEnabled(XML_Parser parser, XML_Bool enabled) {
   return XML_PROP_ERROR_NONE;
 }
 
+static enum XML_Prop_Error
+setMaximumTagDepth(XML_Parser parser, uint64_t maximumTagDepth) {
+  if (parser == NULL)
+    return XML_PROP_ERROR_PARSER_NULL;
+
+  // The limit is document-wide and stored on the root parser only, so that
+  // external entity subparsers inherit a single, consistent limit.
+  if (parser->m_parentParser != NULL)
+    return XML_PROP_ERROR_PARSER_NOT_ROOT;
+
+  // A value of 0 is the documented way to disable the limit again,
+  // restoring the historical behavior.
+  parser->m_maximumTagDepth = maximumTagDepth;
+
+  return XML_PROP_ERROR_NONE;
+}
+
 XML_Bool XMLCALL
 XML_SetReparseDeferralEnabled(XML_Parser parser, XML_Bool enabled) {
   return (setReparseDeferralEnabled(parser, enabled) == XML_PROP_ERROR_NONE)
@@ -3368,6 +3419,8 @@ XML_SetPropertyBool(XML_Parser parser, enum XML_Parser_Property property,
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return setReparseDeferralEnabled(parser, value);
+  case XML_PROP_MAXIMUM_TAG_DEPTH:
+    return XML_PROP_ERROR_INVALID_TYPE;
   default:
     return XML_PROP_ERROR_INVALID_KEY;
   }
@@ -3396,6 +3449,7 @@ XML_SetPropertyDouble(XML_Parser parser, enum XML_Parser_Property property,
   case XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD:
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
+  case XML_PROP_MAXIMUM_TAG_DEPTH:
     return XML_PROP_ERROR_INVALID_TYPE;
   default:
     return XML_PROP_ERROR_INVALID_KEY;
@@ -3427,6 +3481,8 @@ XML_SetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return XML_PROP_ERROR_INVALID_TYPE;
+  case XML_PROP_MAXIMUM_TAG_DEPTH:
+    return setMaximumTagDepth(parser, value);
   default:
     return XML_PROP_ERROR_INVALID_KEY;
   }
@@ -3454,6 +3510,8 @@ XML_GetPropertyBool(XML_Parser parser, enum XML_Parser_Property property,
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     *value = parser->m_reparseDeferralEnabled;
     break;
+  case XML_PROP_MAXIMUM_TAG_DEPTH:
+    return XML_PROP_ERROR_INVALID_TYPE;
   default:
     return XML_PROP_ERROR_INVALID_KEY;
   }
@@ -3482,6 +3540,7 @@ XML_GetPropertyDouble(XML_Parser parser, enum XML_Parser_Property property,
   case XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD:
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
+  case XML_PROP_MAXIMUM_TAG_DEPTH:
     return XML_PROP_ERROR_INVALID_TYPE;
   default:
     return XML_PROP_ERROR_INVALID_KEY;
@@ -3512,6 +3571,9 @@ XML_GetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
 #endif /* XML_GE == 1 */
   case XML_PROP_REPARSE_DEFERRAL_ENABLED:
     return XML_PROP_ERROR_INVALID_TYPE;
+  case XML_PROP_MAXIMUM_TAG_DEPTH:
+    *value = getRootParserOf(parser, NULL)->m_maximumTagDepth;
+    break;
   default:
     return XML_PROP_ERROR_INVALID_KEY;
   }
@@ -3903,6 +3965,12 @@ doContent(XML_Parser parser, int startTagLevel, const ENCODING *enc,
       tag->rawName = s + enc->minBytesPerChar;
       tag->rawNameLength = XmlNameLength(enc, tag->rawName);
       ++parser->m_tagLevel;
+      // Enforce the optional depth limit before any allocation or handler
+      // call, so an over-limit document produces no further events and the
+      // error is reported through the regular parser error state.
+      result = checkMaximumTagDepth(parser);
+      if (result != XML_ERROR_NONE)
+        return result;
       {
         const char *rawNameEnd = tag->rawName + tag->rawNameLength;
         const char *fromPtr = tag->rawName;
@@ -3960,6 +4028,17 @@ doContent(XML_Parser parser, int startTagLevel, const ENCODING *enc,
       poolFinish(&parser->m_tempPool);
       result = storeAtts(parser, enc, s, &name, &bindings,
                          XML_ACCOUNT_NONE /* token spans whole start tag */);
+      if (result != XML_ERROR_NONE) {
+        freeBindings(parser, bindings);
+        return result;
+      }
+      // Empty elements occupy one level of structural nesting just like
+      // a start/end tag pair, even though m_tagLevel is not touched.
+      // Temporarily account for that level; it cannot persist because no
+      // end tag is ever reported for an empty element.
+      ++parser->m_tagLevel;
+      result = checkMaximumTagDepth(parser);
+      --parser->m_tagLevel;
       if (result != XML_ERROR_NONE) {
         freeBindings(parser, bindings);
         return result;
@@ -9797,6 +9876,37 @@ getRootParserOf(XML_Parser parser, unsigned int *outLevelDiff) {
     *outLevelDiff = stepsTakenUpwards;
   }
   return rootParser;
+}
+
+static uint64_t
+getCurrentTagDepth(XML_Parser parser, XML_Parser rootParser) {
+  if (parser == rootParser) {
+    // The root parser starts with m_tagLevel == 0 and each start tag
+    // increments it, so it already equals the number of open elements.
+    return (parser->m_tagLevel > 0) ? (uint64_t)parser->m_tagLevel : 0;
+  }
+  // A subparser starts with m_tagLevel == 1 (a placeholder for the
+  // element in whose content the external entity is parsed) while its
+  // parent's open elements are accounted for via m_inheritedTagDepth.
+  // Subtract one so that the placeholder is not counted twice.
+  const uint64_t localTagLevel
+      = (parser->m_tagLevel > 0) ? (uint64_t)parser->m_tagLevel : 0;
+  return parser->m_inheritedTagDepth + localTagLevel
+         - (localTagLevel > 0 ? 1 : 0);
+}
+
+static enum XML_Error
+checkMaximumTagDepth(XML_Parser parser) {
+  const XML_Parser rootParser = getRootParserOf(parser, NULL);
+  // A value of 0 means that the caller has not opted into the limit,
+  // keeping the historical behavior unchanged.
+  if (rootParser->m_maximumTagDepth == 0)
+    return XML_ERROR_NONE;
+
+  if (getCurrentTagDepth(parser, rootParser) > rootParser->m_maximumTagDepth)
+    return XML_ERROR_MAXIMUM_TAG_DEPTH_EXCEEDED;
+
+  return XML_ERROR_NONE;
 }
 
 #if XML_GE == 1
