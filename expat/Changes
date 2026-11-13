@@ -21,6 +21,14 @@
 //                                   Sebastian Pipping -- Berlin, 2026-09-22 //
 ///////////////////////////////////////////////////////////////////////////////
 
+Release 2.11.0 (in development)
+        New features:
+           lib: Add atomic security configuration preflight and application:
+                - XML_CheckSecurityConfiguration
+                - XML_ApplySecurityConfiguration
+                - XML_Security_Configuration
+                - XML_Security_Resource_Limits
+
 Release 2.10.0 Mon November 2 2026
         Security fixes:
            #1431  CVE-2026-113351 -- Fix denial of service with use of

@@ -1,3 +1,5 @@
+XML_ApplySecurityConfiguration@@LIBEXPAT_2.11.0
+XML_CheckSecurityConfiguration@@LIBEXPAT_2.11.0
 XML_DefaultCurrent@@LIBEXPAT_1.0.0
 XML_ErrorString@@LIBEXPAT_1.0.0
 XML_ExpatVersionInfo@@LIBEXPAT_1.95.3

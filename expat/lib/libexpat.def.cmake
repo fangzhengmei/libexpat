@@ -101,3 +101,5 @@ EXPORTS
   XML_GetBuffer64 @86
   XML_Parse64 @87
   XML_ParseBuffer64 @88
+  XML_ApplySecurityConfiguration @89
+  XML_CheckSecurityConfiguration @90

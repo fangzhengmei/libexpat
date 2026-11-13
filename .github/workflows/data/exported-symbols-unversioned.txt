@@ -1,3 +1,5 @@
+XML_ApplySecurityConfiguration
+XML_CheckSecurityConfiguration
 XML_DefaultCurrent
 XML_ErrorString
 XML_ExpatVersion

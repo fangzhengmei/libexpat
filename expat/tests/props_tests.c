@@ -41,6 +41,58 @@ __  __            _
 
 #include <math.h>
 #include <stdbool.h>
+#include <string.h>
+
+static int XMLCALL
+security_config_external_entity_handler(XML_Parser parser,
+                                        const XML_Char *context,
+                                        const XML_Char *base,
+                                        const XML_Char *systemId,
+                                        const XML_Char *publicId) {
+  int *const callCount = (int *)XML_GetUserData(parser);
+  UNUSED_P(context);
+  UNUSED_P(base);
+  UNUSED_P(systemId);
+  UNUSED_P(publicId);
+  if (callCount != NULL)
+    (*callCount)++;
+  return XML_STATUS_OK;
+}
+
+static XML_Security_Configuration
+make_security_configuration(void) {
+  XML_Security_Configuration configuration;
+  memset(&configuration, 0, sizeof(configuration));
+#ifdef XML_DTD
+  configuration.allowDtd = XML_TRUE;
+#else
+  configuration.allowDtd = XML_FALSE;
+#endif
+  configuration.allowExternalGeneralEntities = XML_FALSE;
+  configuration.allowExternalParameterEntities = XML_FALSE;
+  configuration.reparseDeferralEnabled = g_reparseDeferralEnabledDefault;
+  configuration.externalEntityRefHandler = NULL;
+#if XML_GE == 1
+  configuration.resourceLimits.billionLaughsMaximumAmplification
+      = EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_MAXIMUM_AMPLIFICATION_DEFAULT;
+  configuration.resourceLimits.billionLaughsActivationThresholdBytes
+      = EXPAT_BILLION_LAUGHS_ATTACK_PROTECTION_ACTIVATION_THRESHOLD_DEFAULT;
+  configuration.resourceLimits.allocationMaximumAmplification
+      = EXPAT_ALLOC_TRACKER_MAXIMUM_AMPLIFICATION_DEFAULT;
+  configuration.resourceLimits.allocationActivationThresholdBytes
+      = EXPAT_ALLOC_TRACKER_ACTIVATION_THRESHOLD_DEFAULT;
+#endif
+  return configuration;
+}
+
+static void XMLCALL
+security_config_suspend_handler(void *userData, const XML_Char *name,
+                                const XML_Char **atts) {
+  XML_Parser parser = (XML_Parser)userData;
+  UNUSED_P(name);
+  UNUSED_P(atts);
+  XML_StopParser(parser, XML_TRUE);
+}
 
 enum ExpectedType {
   TYPE_BOOL,
@@ -769,6 +821,434 @@ START_TEST(test_props_setter_error_invalid_value) {
 }
 END_TEST
 
+START_TEST(test_security_configuration_check_does_not_modify_parser) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  int handlerCallCount = 0;
+  XML_SetUserData(parser, &handlerCallCount);
+
+  XML_Bool reparseDeferralEnabled = XML_FALSE;
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == g_reparseDeferralEnabledDefault);
+
+  XML_Security_Configuration validConfiguration
+      = make_security_configuration();
+  validConfiguration.reparseDeferralEnabled = XML_FALSE;
+#if XML_GE == 1 || defined(XML_DTD)
+  validConfiguration.externalEntityRefHandler
+      = security_config_external_entity_handler;
+#endif
+#ifdef XML_DTD
+  validConfiguration.allowExternalParameterEntities = XML_TRUE;
+#endif
+#if XML_GE == 1
+  validConfiguration.allowExternalGeneralEntities = XML_TRUE;
+  validConfiguration.resourceLimits.billionLaughsMaximumAmplification = 2.5f;
+  validConfiguration.resourceLimits.billionLaughsActivationThresholdBytes = 25;
+  validConfiguration.resourceLimits.allocationMaximumAmplification = 3.5f;
+  validConfiguration.resourceLimits.allocationActivationThresholdBytes = 35;
+#endif
+  assert_true(XML_CheckSecurityConfiguration(parser, &validConfiguration)
+              == XML_PROP_ERROR_NONE);
+
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == g_reparseDeferralEnabledDefault);
+
+  assert_true(XML_ApplySecurityConfiguration(parser, &validConfiguration)
+              == XML_PROP_ERROR_NONE);
+
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == XML_FALSE);
+  assert_true(handlerCallCount == 0);
+
+  XML_Security_Configuration invalidConfiguration
+      = make_security_configuration();
+  invalidConfiguration.reparseDeferralEnabled
+      = (XML_Bool)42; // intentionally invalid
+  assert_true(XML_ApplySecurityConfiguration(parser, &invalidConfiguration)
+              == XML_PROP_ERROR_INVALID_VALUE);
+
+  assert_true(reparseDeferralEnabled == XML_FALSE);
+
+#if XML_GE == 1
+  double maximumAmplification = 0.0;
+  uint64_t activationThresholdBytes = 0;
+  assert_true(XML_GetPropertyDouble(
+                  parser, XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION,
+                  &maximumAmplification)
+              == XML_PROP_ERROR_NONE);
+  assert_true(maximumAmplification == 2.5);
+  assert_true(XML_GetPropertyUInt64(
+                  parser, XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD,
+                  &activationThresholdBytes)
+              == XML_PROP_ERROR_NONE);
+  assert_true(activationThresholdBytes == 25);
+#endif
+
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == XML_FALSE);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_security_configuration_invalid_combinations) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  assert_true(XML_CheckSecurityConfiguration(NULL, NULL)
+              == XML_PROP_ERROR_PARSER_NULL);
+  assert_true(XML_CheckSecurityConfiguration(parser, NULL)
+              == XML_PROP_ERROR_CONFIG_NULL);
+
+  XML_Security_Configuration configuration = make_security_configuration();
+  configuration.reparseDeferralEnabled = (XML_Bool)42;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_INVALID_VALUE);
+  configuration = make_security_configuration();
+
+#ifdef XML_DTD
+  configuration.allowExternalParameterEntities = XML_TRUE;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_INCOMPATIBLE_CONFIGURATION);
+  configuration = make_security_configuration();
+#else
+  configuration.allowDtd = XML_TRUE;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_DTD_UNAVAILABLE);
+  configuration = make_security_configuration();
+
+  configuration.allowExternalParameterEntities = XML_TRUE;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_DTD_UNAVAILABLE);
+  configuration = make_security_configuration();
+#endif
+
+#if XML_GE == 1
+  configuration.allowExternalGeneralEntities = XML_TRUE;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_INCOMPATIBLE_CONFIGURATION);
+  configuration = make_security_configuration();
+
+  configuration.resourceLimits.billionLaughsMaximumAmplification = NAN;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_INVALID_VALUE);
+  configuration = make_security_configuration();
+
+  configuration.resourceLimits.allocationMaximumAmplification = 0.5f;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_INVALID_VALUE);
+  configuration = make_security_configuration();
+#else
+  configuration.allowExternalGeneralEntities = XML_TRUE;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_GENERAL_ENTITIES_UNAVAILABLE);
+  configuration = make_security_configuration();
+
+  configuration.externalEntityRefHandler
+      = security_config_external_entity_handler;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_EXTERNAL_ENTITIES_UNAVAILABLE);
+  configuration = make_security_configuration();
+
+  configuration.resourceLimits.billionLaughsMaximumAmplification = 1.0f;
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_RESOURCE_LIMITS_UNAVAILABLE);
+  configuration = make_security_configuration();
+#endif
+
+  XML_Parser subParser = XML_ExternalEntityParserCreate(parser, NULL, NULL);
+#ifdef XML_DTD
+  assert_true(subParser != NULL);
+  assert_true(XML_CheckSecurityConfiguration(subParser, &configuration)
+              == XML_PROP_ERROR_PARSER_NOT_ROOT);
+  XML_ParserFree(subParser);
+#else
+  assert_true(subParser == NULL);
+#endif
+
+  assert_true(XML_Parse_SINGLE_BYTES(parser, "", 0, XML_FALSE)
+              == XML_STATUS_OK);
+  assert_true(XML_CheckSecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_PARSER_BUSY);
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_PARSER_BUSY);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_security_configuration_applies_and_enforces_boundaries) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  XML_Security_Configuration configuration
+      = make_security_configuration();
+  configuration.allowDtd = XML_FALSE;
+  configuration.reparseDeferralEnabled = XML_FALSE;
+#if XML_GE == 1
+  configuration.resourceLimits.billionLaughsMaximumAmplification = 1.0f;
+  configuration.resourceLimits.billionLaughsActivationThresholdBytes = 0;
+#endif
+
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_NONE);
+
+  XML_Bool reparseDeferralEnabled = XML_TRUE;
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == XML_FALSE);
+
+  const char *const dtdDocument
+      = "<!DOCTYPE root><root/>";
+#ifdef XML_DTD
+  assert_true(XML_UseForeignDTD(parser, XML_TRUE)
+              == XML_ERROR_FEATURE_REQUIRES_XML_DTD);
+  assert_true(XML_Parse_SINGLE_BYTES(parser, dtdDocument,
+                                     (int)strlen(dtdDocument), XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(parser)
+              == XML_ERROR_FEATURE_REQUIRES_XML_DTD);
+#else
+  assert_true(XML_Parse_SINGLE_BYTES(parser, dtdDocument,
+                                     (int)strlen(dtdDocument), XML_TRUE)
+              == XML_STATUS_OK);
+#endif
+
+  XML_ParserFree(parser);
+
+#if XML_GE == 1
+  parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+#ifdef XML_DTD
+  configuration.allowDtd = XML_TRUE;
+#endif
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_NONE);
+
+  const char *const externalEntityDocument
+      = "<!DOCTYPE root [<!ENTITY external SYSTEM 'external.txt'>]>"
+        "<root>&external;</root>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, externalEntityDocument,
+                                     (int)strlen(externalEntityDocument),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+
+  XML_ParserFree(parser);
+#endif
+}
+END_TEST
+
+#if XML_GE == 1
+START_TEST(test_security_configuration_limit_survives_suspend_resume) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  XML_Security_Configuration configuration
+      = make_security_configuration();
+  configuration.resourceLimits.billionLaughsMaximumAmplification = 1.0f;
+  configuration.resourceLimits.billionLaughsActivationThresholdBytes = 0;
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_NONE);
+
+  XML_SetUserData(parser, parser);
+  XML_SetStartElementHandler(parser, security_config_suspend_handler);
+
+  const char *const document
+      = "<!DOCTYPE root [<!ENTITY text 'expanded text'>]>"
+        "<suspend>&text;</suspend>";
+  enum XML_Status status
+      = XML_Parse(parser, document, (int)strlen(document), XML_FALSE);
+  assert_true(status == XML_STATUS_SUSPENDED);
+  assert_true(XML_ResumeParser(parser) == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(parser)
+              == XML_ERROR_AMPLIFICATION_LIMIT_BREACH);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+#endif
+
+START_TEST(test_security_configuration_inherits_to_subparser) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  XML_Security_Configuration configuration
+      = make_security_configuration();
+  configuration.reparseDeferralEnabled = XML_FALSE;
+#if XML_GE == 1
+  configuration.resourceLimits.billionLaughsMaximumAmplification = 1.0f;
+  configuration.resourceLimits.billionLaughsActivationThresholdBytes = 0;
+  double maximumAmplification = 0.0;
+  uint64_t activationThresholdBytes = 1;
+#endif
+
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_NONE);
+
+#if XML_GE == 1
+  assert_true(XML_GetPropertyDouble(
+                  parser, XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION,
+                  &maximumAmplification)
+              == XML_PROP_ERROR_NONE);
+  assert_true(maximumAmplification == 1.0);
+  assert_true(XML_GetPropertyUInt64(
+                  parser, XML_PROP_BILLION_LAUGHS_ACTIVATION_THRESHOLD,
+                  &activationThresholdBytes)
+              == XML_PROP_ERROR_NONE);
+  assert_true(activationThresholdBytes == 0);
+#endif
+
+  XML_Parser subParser = XML_ExternalEntityParserCreate(parser, "e1",
+                                                        NULL);
+#if XML_GE == 1
+  assert_true(subParser != NULL);
+  XML_Bool reparseDeferralEnabled = XML_TRUE;
+  assert_true(XML_GetPropertyBool(subParser,
+                                  XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == XML_FALSE);
+
+  const char *const externalDocument = "<external/>";
+  assert_true(XML_Parse_SINGLE_BYTES(subParser, externalDocument,
+                                     (int)strlen(externalDocument), XML_TRUE)
+              == XML_STATUS_ERROR);
+  assert_true(XML_GetErrorCode(subParser)
+              == XML_ERROR_AMPLIFICATION_LIMIT_BREACH);
+
+  XML_ParserFree(subParser);
+#else
+  if (subParser != NULL)
+    XML_ParserFree(subParser);
+#endif
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+START_TEST(test_legacy_property_setters_remain_independent) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  assert_true(XML_SetReparseDeferralEnabled(parser, XML_FALSE) == XML_TRUE);
+  XML_Bool reparseDeferralEnabled = XML_TRUE;
+  assert_true(XML_GetPropertyBool(parser, XML_PROP_REPARSE_DEFERRAL_ENABLED,
+                                  &reparseDeferralEnabled)
+              == XML_PROP_ERROR_NONE);
+  assert_true(reparseDeferralEnabled == XML_FALSE);
+
+#if XML_GE == 1
+  assert_true(XML_SetBillionLaughsAttackProtectionMaximumAmplification(
+                  parser, 2.0f)
+              == XML_TRUE);
+  double maximumAmplification = 0.0;
+  assert_true(XML_GetPropertyDouble(
+                  parser, XML_PROP_BILLION_LAUGHS_MAXIMUM_AMPLIFICATION,
+                  &maximumAmplification)
+              == XML_PROP_ERROR_NONE);
+  assert_true(maximumAmplification == 2.0);
+#endif
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+#if defined(XML_DTD) && XML_GE == 1
+START_TEST(test_security_configuration_enables_external_entities) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  int handlerCallCount = 0;
+  XML_Security_Configuration configuration
+      = make_security_configuration();
+  configuration.allowExternalParameterEntities = XML_TRUE;
+  configuration.allowExternalGeneralEntities = XML_TRUE;
+  configuration.externalEntityRefHandler
+      = security_config_external_entity_handler;
+  XML_SetUserData(parser, &handlerCallCount);
+
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_NONE);
+
+  const char *const document
+      = "<!DOCTYPE root SYSTEM 'external.dtd'>"
+        "<root>&external;</root>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, document, (int)strlen(document),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(handlerCallCount == 1);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+#endif
+
+#if XML_GE == 1
+START_TEST(test_security_configuration_enables_general_entities_without_dtd) {
+  if (g_chunkSize != 0)
+    return;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  int handlerCallCount = 0;
+  XML_Security_Configuration configuration
+      = make_security_configuration();
+#ifndef XML_DTD
+  configuration.allowDtd = XML_FALSE;
+#endif
+  configuration.allowExternalGeneralEntities = XML_TRUE;
+  configuration.externalEntityRefHandler
+      = security_config_external_entity_handler;
+  XML_SetUserData(parser, &handlerCallCount);
+
+  assert_true(XML_ApplySecurityConfiguration(parser, &configuration)
+              == XML_PROP_ERROR_NONE);
+
+  const char *const document
+      = "<!DOCTYPE root [<!ENTITY external SYSTEM 'external.txt'>]>"
+        "<root>&external;</root>";
+  assert_true(XML_Parse_SINGLE_BYTES(parser, document, (int)strlen(document),
+                                     XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(handlerCallCount == 1);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+#endif
+
 void
 make_props_test_case(Suite *s) {
   TCase *const tc_props = tcase_create("properties tests");
@@ -787,4 +1267,26 @@ make_props_test_case(Suite *s) {
   tcase_add_test(tc_props, test_props_setter_error_invalid_key);
   tcase_add_test(tc_props, test_props_setter_error_invalid_type);
   tcase_add_test(tc_props, test_props_setter_error_invalid_value);
+  tcase_add_test(tc_props,
+                 test_security_configuration_check_does_not_modify_parser);
+  tcase_add_test(tc_props,
+                 test_security_configuration_invalid_combinations);
+  tcase_add_test(tc_props,
+                 test_security_configuration_applies_and_enforces_boundaries);
+#if XML_GE == 1
+  tcase_add_test(tc_props,
+                 test_security_configuration_limit_survives_suspend_resume);
+#endif
+  tcase_add_test(tc_props,
+                 test_security_configuration_inherits_to_subparser);
+  tcase_add_test(tc_props,
+                 test_legacy_property_setters_remain_independent);
+#if defined(XML_DTD) && XML_GE == 1
+  tcase_add_test(tc_props,
+                 test_security_configuration_enables_external_entities);
+#endif
+#if XML_GE == 1
+  tcase_add_test(tc_props,
+                 test_security_configuration_enables_general_entities_without_dtd);
+#endif
 }

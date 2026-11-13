@@ -679,6 +679,10 @@ setAllocTrackerActivationThreshold(XML_Parser parser,
 static enum XML_Prop_Error setReparseDeferralEnabled(XML_Parser parser,
                                                      XML_Bool enabled);
 
+static enum XML_Prop_Error
+checkSecurityConfiguration(XML_Parser parser,
+                           const XML_Security_Configuration *configuration);
+
 #define poolStart(pool) ((pool)->start)
 #define poolLength(pool) ((pool)->ptr - (pool)->start)
 #define poolChop(pool) ((void)--(pool->ptr))
@@ -829,6 +833,7 @@ struct XML_ParserStruct {
 #ifdef XML_DTD
   XML_Bool m_isParamEntity;
   XML_Bool m_useForeignDTD;
+  XML_Bool m_dtdAllowed;
   enum XML_ParamEntityParsing m_paramEntityParsing;
 #endif
   struct sipkey m_hash_secret_salt_128;
@@ -1571,6 +1576,7 @@ parserInit(XML_Parser parser, const XML_Char *encodingName, bool isReset) {
 #ifdef XML_DTD
   parser->m_isParamEntity = XML_FALSE;
   parser->m_useForeignDTD = XML_FALSE;
+  parser->m_dtdAllowed = XML_TRUE;
   parser->m_paramEntityParsing = XML_PARAM_ENTITY_PARSING_NEVER;
 #endif
   parser->m_hash_secret_salt_128.k[0] = 0;
@@ -1993,6 +1999,8 @@ XML_UseForeignDTD(XML_Parser parser, XML_Bool useDTD) {
   /* block after XML_Parse()/XML_ParseBuffer() has been called */
   if (parserBusy(parser))
     return XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING;
+  if (useDTD && ! parser->m_dtdAllowed)
+    return XML_ERROR_FEATURE_REQUIRES_XML_DTD;
   parser->m_useForeignDTD = useDTD;
   return XML_ERROR_NONE;
 #else
@@ -3350,6 +3358,135 @@ XML_SetReparseDeferralEnabled(XML_Parser parser, XML_Bool enabled) {
   return (setReparseDeferralEnabled(parser, enabled) == XML_PROP_ERROR_NONE)
              ? XML_TRUE
              : XML_FALSE;
+}
+
+static XML_Bool
+isValidXmlBool(XML_Bool value) {
+  return (value == XML_TRUE) || (value == XML_FALSE);
+}
+
+static enum XML_Prop_Error
+checkSecurityConfiguration(XML_Parser parser,
+                           const XML_Security_Configuration *configuration) {
+  if (parser == NULL)
+    return XML_PROP_ERROR_PARSER_NULL;
+
+  if (configuration == NULL)
+    return XML_PROP_ERROR_CONFIG_NULL;
+
+  if (parser->m_parentParser != NULL)
+    return XML_PROP_ERROR_PARSER_NOT_ROOT;
+
+  if (parserBusy(parser))
+    return XML_PROP_ERROR_PARSER_BUSY;
+
+  if (! isValidXmlBool(configuration->allowDtd)
+      || ! isValidXmlBool(configuration->allowExternalGeneralEntities)
+      || ! isValidXmlBool(configuration->allowExternalParameterEntities)
+      || ! isValidXmlBool(configuration->reparseDeferralEnabled)) {
+    return XML_PROP_ERROR_INVALID_VALUE;
+  }
+
+#ifdef XML_DTD
+  if (configuration->allowDtd) {
+    if (configuration->allowExternalParameterEntities
+        && (configuration->externalEntityRefHandler == NULL)) {
+      return XML_PROP_ERROR_INCOMPATIBLE_CONFIGURATION;
+    }
+  } else if (configuration->allowExternalParameterEntities) {
+    return XML_PROP_ERROR_DTD_UNAVAILABLE;
+  }
+#else
+  if (configuration->allowDtd
+      || configuration->allowExternalParameterEntities) {
+    return XML_PROP_ERROR_DTD_UNAVAILABLE;
+  }
+#endif /* XML_DTD */
+
+#if XML_GE == 1
+  if (isnan(configuration->resourceLimits
+                 .billionLaughsMaximumAmplification)
+      || (configuration->resourceLimits.billionLaughsMaximumAmplification
+          < 1.0f)
+      || isnan(
+          configuration->resourceLimits.allocationMaximumAmplification)
+      || (configuration->resourceLimits.allocationMaximumAmplification
+          < 1.0f)) {
+    return XML_PROP_ERROR_INVALID_VALUE;
+  }
+
+  if (configuration->allowExternalGeneralEntities
+      && (configuration->externalEntityRefHandler == NULL)) {
+    return XML_PROP_ERROR_INCOMPATIBLE_CONFIGURATION;
+  }
+#else
+  if (configuration->allowExternalGeneralEntities)
+    return XML_PROP_ERROR_GENERAL_ENTITIES_UNAVAILABLE;
+
+  if (configuration->externalEntityRefHandler != NULL)
+    return XML_PROP_ERROR_EXTERNAL_ENTITIES_UNAVAILABLE;
+
+  if ((configuration->resourceLimits.billionLaughsMaximumAmplification
+       != 0.0f)
+      || (configuration->resourceLimits.billionLaughsActivationThresholdBytes
+          != 0)
+      || (configuration->resourceLimits.allocationMaximumAmplification
+          != 0.0f)
+      || (configuration->resourceLimits.allocationActivationThresholdBytes
+          != 0)) {
+    return XML_PROP_ERROR_RESOURCE_LIMITS_UNAVAILABLE;
+  }
+#endif /* XML_GE == 1 */
+
+  return XML_PROP_ERROR_NONE;
+}
+
+enum XML_Prop_Error XMLCALL
+XML_CheckSecurityConfiguration(
+    XML_Parser parser, const XML_Security_Configuration *configuration) {
+  return checkSecurityConfiguration(parser, configuration);
+}
+
+enum XML_Prop_Error XMLCALL
+XML_ApplySecurityConfiguration(
+    XML_Parser parser, const XML_Security_Configuration *configuration) {
+  const enum XML_Prop_Error result
+      = checkSecurityConfiguration(parser, configuration);
+  if (result != XML_PROP_ERROR_NONE)
+    return result;
+
+  parser->m_reparseDeferralEnabled
+      = configuration->reparseDeferralEnabled;
+
+  if (configuration->allowExternalGeneralEntities
+      || configuration->allowExternalParameterEntities) {
+    parser->m_externalEntityRefHandler
+        = configuration->externalEntityRefHandler;
+  } else {
+    parser->m_externalEntityRefHandler = NULL;
+  }
+
+#ifdef XML_DTD
+  parser->m_dtdAllowed = configuration->allowDtd;
+  parser->m_paramEntityParsing
+      = configuration->allowExternalParameterEntities
+            ? XML_PARAM_ENTITY_PARSING_ALWAYS
+            : XML_PARAM_ENTITY_PARSING_NEVER;
+#endif
+
+#if XML_GE == 1
+  parser->m_accounting.maximumAmplificationFactor
+      = configuration->resourceLimits.billionLaughsMaximumAmplification;
+  parser->m_accounting.activationThresholdBytes
+      = configuration->resourceLimits
+            .billionLaughsActivationThresholdBytes;
+  parser->m_alloc_tracker.maximumAmplificationFactor
+      = configuration->resourceLimits.allocationMaximumAmplification;
+  parser->m_alloc_tracker.activationThresholdBytes
+      = configuration->resourceLimits.allocationActivationThresholdBytes;
+#endif
+
+  return XML_PROP_ERROR_NONE;
 }
 
 enum XML_Prop_Error XMLCALL
@@ -5722,6 +5859,10 @@ doProlog(XML_Parser parser, const ENCODING *enc, const char *s, const char *end,
       handleDefault = XML_FALSE;
     } break;
     case XML_ROLE_DOCTYPE_NAME:
+#ifdef XML_DTD
+      if (! parser->m_dtdAllowed)
+        return XML_ERROR_FEATURE_REQUIRES_XML_DTD;
+#endif
       if (parser->m_startDoctypeDeclHandler) {
         parser->m_doctypeName
             = poolStoreString(&parser->m_tempPool, enc, s, next);
@@ -5819,6 +5960,8 @@ doProlog(XML_Parser parser, const ENCODING *enc, const char *s, const char *end,
          was not set, indicating an external subset
       */
 #ifdef XML_DTD
+      if (! parser->m_dtdAllowed)
+        return XML_ERROR_FEATURE_REQUIRES_XML_DTD;
       if (parser->m_doctypeSysid || parser->m_useForeignDTD) {
         XML_Bool hadParamEntityRefs = dtd->hasParamEntityRefs;
         dtd->hasParamEntityRefs = XML_TRUE;
@@ -5877,6 +6020,8 @@ doProlog(XML_Parser parser, const ENCODING *enc, const char *s, const char *end,
          last chance to read the foreign DTD
       */
       if (parser->m_useForeignDTD) {
+        if (! parser->m_dtdAllowed)
+          return XML_ERROR_FEATURE_REQUIRES_XML_DTD;
         XML_Bool hadParamEntityRefs = dtd->hasParamEntityRefs;
         dtd->hasParamEntityRefs = XML_TRUE;
         if (parser->m_paramEntityParsing

@@ -140,6 +140,8 @@ LIBEXPAT_2.9.0 {
 
 LIBEXPAT_2.11.0 {
  global:
+  XML_ApplySecurityConfiguration;
+  XML_CheckSecurityConfiguration;
   XML_GetBuffer64;
   XML_Parse64;
   XML_ParseBuffer64;

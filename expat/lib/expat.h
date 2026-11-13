@@ -158,7 +158,14 @@ enum XML_Prop_Error {
                                       // but a subparser (and a root parser is
                                       // needed)
 
-  /* potentially more error codes upcoming here */
+  /* Added in Expat 2.11.0. */
+  XML_PROP_ERROR_CONFIG_NULL = 6,
+  XML_PROP_ERROR_PARSER_BUSY = 7,
+  XML_PROP_ERROR_DTD_UNAVAILABLE = 8,
+  XML_PROP_ERROR_GENERAL_ENTITIES_UNAVAILABLE = 9,
+  XML_PROP_ERROR_EXTERNAL_ENTITIES_UNAVAILABLE = 10,
+  XML_PROP_ERROR_RESOURCE_LIMITS_UNAVAILABLE = 11,
+  XML_PROP_ERROR_INCOMPATIBLE_CONFIGURATION = 12,
 };
 
 enum XML_Content_Type {
@@ -1102,6 +1109,34 @@ enum XML_Parser_Property {
   /* more properties upcoming here */
 };
 
+/* Added in Expat 2.11.0. These resource limits are only available when Expat
+ * has been built with XML_GE == 1. All four fields must be zero when general
+ * entity support is compiled out.
+ */
+typedef struct {
+  float billionLaughsMaximumAmplification;
+  uint64_t billionLaughsActivationThresholdBytes;
+  float allocationMaximumAmplification;
+  uint64_t allocationActivationThresholdBytes;
+} XML_Security_Resource_Limits;
+
+/* Added in Expat 2.11.0. XML_CheckSecurityConfiguration validates all fields
+ * without modifying the parser. XML_ApplySecurityConfiguration performs the
+ * same validation first, then applies all fields atomically.
+ */
+typedef struct {
+  /* XML_FALSE rejects DOCTYPE declarations and foreign DTDs. */
+  XML_Bool allowDtd;
+  /* Requires XML_GE == 1 and a non-NULL externalEntityRefHandler. */
+  XML_Bool allowExternalGeneralEntities;
+  /* Requires XML_DTD, allowDtd, and a non-NULL externalEntityRefHandler. */
+  XML_Bool allowExternalParameterEntities;
+  XML_Bool reparseDeferralEnabled;
+  /* Required when either external entity type is enabled. */
+  XML_ExternalEntityRefHandler externalEntityRefHandler;
+  XML_Security_Resource_Limits resourceLimits;
+} XML_Security_Configuration;
+
 /* Added in Expat 2.9.0. */
 XMLPARSEAPI(enum XML_Prop_Error)
 XML_GetPropertyBool(XML_Parser parser, enum XML_Parser_Property property,
@@ -1121,6 +1156,14 @@ XML_SetPropertyDouble(XML_Parser parser, enum XML_Parser_Property property,
 XMLPARSEAPI(enum XML_Prop_Error)
 XML_SetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
                       uint64_t value);
+
+/* Added in Expat 2.11.0. */
+XMLPARSEAPI(enum XML_Prop_Error)
+XML_CheckSecurityConfiguration(XML_Parser parser,
+                               const XML_Security_Configuration *configuration);
+XMLPARSEAPI(enum XML_Prop_Error)
+XML_ApplySecurityConfiguration(XML_Parser parser,
+                               const XML_Security_Configuration *configuration);
 
 #  if defined(XML_DTD) || (defined(XML_GE) && XML_GE == 1)
 /* Added in Expat 2.4.0 for XML_DTD defined and

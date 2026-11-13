@@ -392,6 +392,14 @@
                 <li>
                   <a href="#XML_SetPropertyUInt64">XML_SetPropertyUInt64</a>
                 </li>
+
+                <li>
+                  <a href="#XML_CheckSecurityConfiguration">XML_CheckSecurityConfiguration</a>
+                </li>
+
+                <li>
+                  <a href="#XML_ApplySecurityConfiguration">XML_ApplySecurityConfiguration</a>
+                </li>
               </ul>
             </li>
 
@@ -3477,7 +3485,14 @@ enum XML_Prop_Error {
                                       // but a subparser (and a root parser is
                                       // needed)
 
-  /* potentially more error codes upcoming here */
+  /* Added in Expat 2.11.0. */
+  XML_PROP_ERROR_CONFIG_NULL = 6,
+  XML_PROP_ERROR_PARSER_BUSY = 7,
+  XML_PROP_ERROR_DTD_UNAVAILABLE = 8,
+  XML_PROP_ERROR_GENERAL_ENTITIES_UNAVAILABLE = 9,
+  XML_PROP_ERROR_EXTERNAL_ENTITIES_UNAVAILABLE = 10,
+  XML_PROP_ERROR_RESOURCE_LIMITS_UNAVAILABLE = 11,
+  XML_PROP_ERROR_INCOMPATIBLE_CONFIGURATION = 12,
 };</pre>
       <p>
         Let us look at these functions in more detail:
@@ -3613,6 +3628,69 @@ XML_GetPropertyUInt64(XML_Parser parser, enum XML_Parser_Property property,
           "#XML_Prop_Error">XML_Prop_Error</a> in the future, so user code must be robust
           towards error codes from the future at runtime that were not known at compile
           time.
+        </p>
+      </div>
+
+      <h4 id="XML_CheckSecurityConfiguration">
+        XML_CheckSecurityConfiguration
+      </h4>
+
+      <h4 id="XML_ApplySecurityConfiguration">
+        XML_ApplySecurityConfiguration
+      </h4>
+
+      <pre class="fcndec">
+/* Added in Expat 2.11.0. */
+enum XML_Prop_Error
+XML_CheckSecurityConfiguration(XML_Parser parser,
+                               const XML_Security_Configuration *configuration);
+
+/* Added in Expat 2.11.0. */
+enum XML_Prop_Error
+XML_ApplySecurityConfiguration(XML_Parser parser,
+                               const XML_Security_Configuration *configuration);
+
+typedef struct {
+  float billionLaughsMaximumAmplification;
+  uint64_t billionLaughsActivationThresholdBytes;
+  float allocationMaximumAmplification;
+  uint64_t allocationActivationThresholdBytes;
+} XML_Security_Resource_Limits;
+
+typedef struct {
+  XML_Bool allowDtd;
+  XML_Bool allowExternalGeneralEntities;
+  XML_Bool allowExternalParameterEntities;
+  XML_Bool reparseDeferralEnabled;
+  XML_ExternalEntityRefHandler externalEntityRefHandler;
+  XML_Security_Resource_Limits resourceLimits;
+} XML_Security_Configuration;
+</pre>
+      <div class="fcndef">
+        <p>
+          These functions validate one combined security configuration before an
+          application parses untrusted XML.
+          <code>XML_CheckSecurityConfiguration</code> only performs validation and never
+          modifies the parser. <code>XML_ApplySecurityConfiguration</code> runs the same
+          validation first and applies all fields atomically, so a rejected configuration
+          leaves the existing parser settings unchanged.
+        </p>
+
+        <p>
+          The configuration controls DTD use, external general and parameter entities,
+          reparse deferral, the external entity reference handler, and the billion laughs
+          and allocation resource limits. Enabling an external entity type requires a
+          non-<code>NULL</code> external entity reference handler. Enabling parameter
+          entities also requires DTD support. Resource limits require general entity
+          support (<code>XML_GE == 1</code>); when that support is compiled out, all four
+          resource limit fields must be zero.
+        </p>
+
+        <p>
+          Both functions require a non-<code>NULL</code> root parser that has not started
+          parsing, and a non-<code>NULL</code> configuration. The returned
+          <code>XML_Prop_Error</code> distinguishes unsupported compiled features, invalid
+          values, parser state errors, and incompatible combinations.
         </p>
       </div>
 
