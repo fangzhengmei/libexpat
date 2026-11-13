@@ -1,0 +1,12 @@
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/expat.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/runtests.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/benchmark.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/package.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/package_source.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/test.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/edit_cache.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/rebuild_cache.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/list_install_components.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/install.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/install/local.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/CMakeFiles/install/strip.dir

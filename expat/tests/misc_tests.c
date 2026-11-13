@@ -59,6 +59,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "dummy.h" // for dummy_start_element
@@ -133,6 +134,18 @@ END_TEST
 #  endif
 #else
 #  define EXPAT_TESTS_UBSAN 0
+#endif
+
+#if defined(__SANITIZE_ADDRESS__)
+#  define EXPAT_TESTS_ADDRESS_SANITIZER 1
+#elif defined(__has_feature)
+#  if __has_feature(address_sanitizer)
+#    define EXPAT_TESTS_ADDRESS_SANITIZER 1
+#  endif
+#endif
+
+#ifdef EXPAT_TESTS_ADDRESS_SANITIZER
+#  include <sanitizer/asan_interface.h>
 #endif
 
 /* Test that XML_ErrorString rejects out-of-range codes */
@@ -1268,6 +1281,477 @@ START_TEST(test_misc_empty_nonfinal_subparser_parse) {
 }
 END_TEST
 
+typedef struct {
+  int callCount;
+  int copiedCharCount;
+  const XML_Char *lastCallbackPointer;
+  XML_Char copied[2400];
+} CharacterBufferLifecycleData;
+
+static void XMLCALL
+character_buffer_lifecycle_handler(void *userData, const XML_Char *s,
+                                   int len) {
+  CharacterBufferLifecycleData *const data = userData;
+
+  assert_true(s != NULL);
+  assert_true(len > 0);
+  assert_true((size_t)len <= sizeof(data->copied) / sizeof(data->copied[0])
+                                - (size_t)data->copiedCharCount);
+
+  // Every callback may read its complete buffer.  Copying while still inside
+  // the callback is the supported way to keep data for a later API call.
+  memcpy(data->copied + data->copiedCharCount, s,
+         (size_t)len * sizeof(XML_Char));
+  data->copiedCharCount += len;
+
+  // Record only the address for identity checks.  The tests below never
+  // dereference it after this callback has returned; the boundary under test
+  // is pointer lifetime, not access to stale data.
+  data->lastCallbackPointer = s;
+  data->callCount++;
+}
+
+static void
+append_utf16le(char *buffer, size_t *offset, const char *text) {
+  for (; *text; ++text) {
+    buffer[(*offset)++] = *text;
+    buffer[(*offset)++] = '\0';
+  }
+}
+
+START_TEST(test_misc_character_buffer_empty_and_chunked_encoding) {
+  CharacterBufferLifecycleData data = {0};
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  // Empty, non-final input is a valid continuation call and must not invoke
+  // the character handler or put the parser into an error state.
+  assert_true(XML_Parse(parser, NULL, 0, /*isFinal=*/XML_FALSE)
+              == XML_STATUS_OK);
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  assert_true(data.callCount == 0);
+
+  XML_SetUserData(parser, &data);
+  XML_SetCharacterDataHandler(parser, character_buffer_lifecycle_handler);
+
+  char document[256];
+  size_t documentLength = 0;
+  append_utf16le(document, &documentLength,
+                 "<?xml version='1.0' encoding='utf-16'?><r>AB</r>");
+
+  // Feed odd-sized chunks so the UTF-16 declaration and text cross both
+  // parser calls and individual code units.  Converted text is delivered from
+  // Expat's internal conversion buffer rather than the UTF-16 input bytes.
+  for (size_t offset = 0; offset < documentLength;) {
+    const size_t chunkLength
+        = (documentLength - offset < 3) ? documentLength - offset : 3;
+    const XML_Bool isFinal
+        = (offset + chunkLength == documentLength) ? XML_TRUE : XML_FALSE;
+    assert_true(XML_Parse(parser, document + offset, (int)chunkLength,
+                          isFinal)
+                == XML_STATUS_OK);
+    offset += chunkLength;
+  }
+
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  assert_true(data.callCount >= 1);
+  assert_true(data.copiedCharCount == 2);
+  assert_true(data.copied[0] == XCS('A'));
+  assert_true(data.copied[1] == XCS('B'));
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+static void XMLCALL
+character_buffer_switch_handler(void *userData, const XML_Char *s, int len) {
+  CharacterBufferLifecycleData *const data = userData;
+  XML_Parser parser = (XML_Parser)XML_GetUserData(userData);
+
+  character_buffer_lifecycle_handler(userData, s, len);
+  if (data->callCount == 1) {
+    XML_SetCharacterDataHandler(parser, character_buffer_lifecycle_handler);
+  }
+}
+
+START_TEST(test_misc_character_buffer_pool_growth_and_handler_switch) {
+  enum { ENTITY_LENGTH = 1100 };
+  char value[ENTITY_LENGTH + 1];
+  char document[ENTITY_LENGTH + 128];
+  CharacterBufferLifecycleData data = {0};
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  memset(value, 'A', ENTITY_LENGTH);
+  value[ENTITY_LENGTH] = '\0';
+
+  int documentLength = snprintf(
+      document, sizeof(document),
+      "<!DOCTYPE r [<!ENTITY long '%.1100s'>]><r>&long;&long;</r>",
+      value);
+  assert_true(documentLength > 0 && (size_t)documentLength < sizeof(document));
+
+  XML_SetUserData(parser, &data);
+  XML_SetCharacterDataHandler(parser, character_buffer_switch_handler);
+  assert_true(XML_Parse(parser, document, documentLength, /*isFinal=*/XML_TRUE)
+              == XML_STATUS_OK);
+
+  // The first entity is larger than the initial string-pool block, forcing
+  // pool growth while constructing the callback's backing storage.  Both
+  // expansions must remain readable inside their own callback, and replacing
+  // the handler during the first callback must not make Expat call stale
+  // function state.
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  assert_true(data.callCount == 2);
+  assert_true(data.copiedCharCount == ENTITY_LENGTH * 2);
+  assert_true(data.copied[0] == XCS('A'));
+  assert_true(data.copied[ENTITY_LENGTH - 1] == XCS('A'));
+  assert_true(data.copied[ENTITY_LENGTH] == XCS('A'));
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+typedef struct {
+  CharacterBufferLifecycleData base;
+  XML_Parser parser;
+} SuspendedCharacterBufferData;
+
+static void XMLCALL
+suspend_after_first_character_handler(void *userData, const XML_Char *s,
+                                      int len) {
+  SuspendedCharacterBufferData *const data = userData;
+  character_buffer_lifecycle_handler(&data->base, s, len);
+  if (data->base.callCount == 1) {
+    assert_true(XML_StopParser(data->parser, /*resumable=*/XML_TRUE)
+                == XML_STATUS_OK);
+  }
+}
+
+START_TEST(test_misc_character_buffer_suspend_resume_lifetime) {
+  const char *const document = "<r>first second</r>";
+  SuspendedCharacterBufferData data = {0};
+  XML_ParsingStatus status;
+
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+  data.parser = parser;
+  XML_SetUserData(parser, &data);
+  XML_SetCharacterDataHandler(parser,
+                              suspend_after_first_character_handler);
+
+  // This parse call must use one input buffer.  The suspended callback owns
+  // its pointer only while it runs, while the parser state and copied text
+  // survive suspension.
+  assert_true(XML_Parse(parser, document, (int)strlen(document),
+                        /*isFinal=*/XML_TRUE)
+              == XML_STATUS_SUSPENDED);
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  XML_GetParsingStatus(parser, &status);
+  assert_true(status.parsing == XML_SUSPENDED);
+  assert_true(data.base.callCount == 1);
+
+  assert_true(XML_ResumeParser(parser) == XML_STATUS_OK);
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  XML_GetParsingStatus(parser, &status);
+  assert_true(status.parsing == XML_FINISHED);
+  assert_true(data.base.callCount == 1);
+  assert_true(data.base.copiedCharCount == 12);
+  assert_true(memcmp(data.base.copied, XCS("first second"),
+                     12 * sizeof(XML_Char))
+              == 0);
+
+  // A second suspended parser exercises teardown while parser state still
+  // references the callback's input.  The copied text remains valid because
+  // it is owned by the test, while the callback address is intentionally not
+  // dereferenced after teardown.
+  XML_Parser suspendedParser = XML_ParserCreate(NULL);
+  assert_true(suspendedParser != NULL);
+  SuspendedCharacterBufferData suspendedData = {0};
+  suspendedData.parser = suspendedParser;
+  XML_SetUserData(suspendedParser, &suspendedData);
+  XML_SetCharacterDataHandler(suspendedParser,
+                              suspend_after_first_character_handler);
+  assert_true(XML_Parse(suspendedParser, document, (int)strlen(document),
+                        /*isFinal=*/XML_TRUE)
+              == XML_STATUS_SUSPENDED);
+  XML_GetParsingStatus(suspendedParser, &status);
+  assert_true(status.parsing == XML_SUSPENDED);
+  assert_true(suspendedData.base.callCount == 1);
+  assert_true(suspendedData.base.copiedCharCount >= 1);
+  XML_ParserFree(suspendedParser);
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
+#ifdef XML_DTD
+typedef struct {
+  int externalEntityCalls;
+  int characterCalls;
+  int allocationFailures;
+  const XML_Char *lastPointer;
+} ExternalEntityOomData;
+
+static void XMLCALL
+external_entity_oom_character_handler(void *userData, const XML_Char *s,
+                                      int len) {
+  ExternalEntityOomData *const data = userData;
+  assert_true(len == 5);
+  assert_true(memcmp(s, XCS("child"), 5 * sizeof(XML_Char)) == 0);
+  data->lastPointer = s;
+  data->characterCalls++;
+}
+
+static int XMLCALL
+external_entity_oom_handler(XML_Parser parent, const XML_Char *context,
+                            const XML_Char *base, const XML_Char *systemId,
+                            const XML_Char *publicId) {
+  ExternalEntityOomData *const data = XML_GetUserData(parent);
+  const char *const childDocument = "<r>child</r>";
+
+  UNUSED_P(base);
+  UNUSED_P(systemId);
+  UNUSED_P(publicId);
+
+  data->externalEntityCalls++;
+  XML_Parser child = XML_ExternalEntityParserCreate(parent, context, NULL);
+  if (child == NULL) {
+    data->allocationFailures++;
+    return XML_STATUS_ERROR;
+  }
+
+  const enum XML_Status status
+      = XML_Parse(child, childDocument, (int)strlen(childDocument),
+                  /*isFinal=*/XML_TRUE);
+  const enum XML_Error error = XML_GetErrorCode(child);
+  XML_ParserFree(child);
+
+  if (status != XML_STATUS_OK) {
+    assert_true(error == XML_ERROR_NO_MEMORY);
+    data->allocationFailures++;
+    return XML_STATUS_ERROR;
+  }
+
+  return XML_STATUS_OK;
+}
+
+START_TEST(test_misc_external_entity_oom_error_and_callback_counts) {
+  const char *const document =
+      "<!DOCTYPE r [<!ENTITY e SYSTEM 'child.xml'>]><r>&e;</r>";
+  const XML_Memory_Handling_Suite memsuite
+      = {duff_allocator, duff_reallocator, tracking_free};
+  bool reachedSuccess = false;
+  bool observedExternalFailure = false;
+
+  for (int allocationBudget = 0; allocationBudget < 80; allocationBudget++) {
+    ExternalEntityOomData data = {0};
+    g_allocation_count = allocationBudget;
+    g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
+
+    XML_Parser parser = XML_ParserCreate_MM(NULL, &memsuite, NULL);
+    if (parser == NULL)
+      continue;
+
+    XML_SetUserData(parser, &data);
+    XML_SetCharacterDataHandler(parser,
+                                external_entity_oom_character_handler);
+    XML_SetExternalEntityRefHandler(parser, external_entity_oom_handler);
+
+    const enum XML_Status status
+        = XML_Parse(parser, document, (int)strlen(document),
+                    /*isFinal=*/XML_TRUE);
+    const enum XML_Error error = XML_GetErrorCode(parser);
+
+    XML_ParserFree(parser);
+
+    if (status == XML_STATUS_OK) {
+      assert_true(error == XML_ERROR_NONE);
+      assert_true(data.externalEntityCalls == 1);
+      assert_true(data.characterCalls == 1);
+      assert_true(data.allocationFailures == 0);
+      assert_true(data.lastPointer != NULL);
+      reachedSuccess = true;
+      break;
+    }
+
+    if (data.externalEntityCalls == 0)
+      continue;
+
+    observedExternalFailure = true;
+    assert_true(error == XML_ERROR_NO_MEMORY
+                || error == XML_ERROR_EXTERNAL_ENTITY_HANDLING);
+    assert_true(data.allocationFailures == 1);
+    assert_true(data.characterCalls == 0);
+  }
+
+  g_allocation_count = ALLOC_ALWAYS_SUCCEED;
+  g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
+  assert_true(reachedSuccess);
+  assert_true(observedExternalFailure);
+  assert_true(tracking_report());
+}
+END_TEST
+
+START_TEST(test_misc_character_buffer_realloc_failure) {
+  enum { ENTITY_LENGTH = 1100 };
+  char value[ENTITY_LENGTH + 1];
+  char document[ENTITY_LENGTH + 128];
+  const XML_Memory_Handling_Suite memsuite
+      = {duff_allocator, duff_reallocator, tracking_free};
+  bool observedReallocationFailure = false;
+
+  memset(value, 'A', ENTITY_LENGTH);
+  value[ENTITY_LENGTH] = '\0';
+  const int documentLength = snprintf(
+      document, sizeof(document),
+      "<!DOCTYPE r [<!ENTITY long '%.1100s'>]><r>&long;</r>", value);
+  assert_true(documentLength > 0);
+
+  for (int reallocationBudget = 0; reallocationBudget < 8;
+       reallocationBudget++) {
+    CharacterBufferLifecycleData data = {0};
+    g_allocation_count = ALLOC_ALWAYS_SUCCEED;
+    g_reallocation_count = reallocationBudget;
+
+    XML_Parser parser = XML_ParserCreate_MM(NULL, &memsuite, NULL);
+    assert_true(parser != NULL);
+    XML_SetUserData(parser, &data);
+    XML_SetCharacterDataHandler(parser, character_buffer_lifecycle_handler);
+
+    const enum XML_Status status
+        = XML_Parse(parser, document, documentLength, /*isFinal=*/XML_TRUE);
+    const enum XML_Error error = XML_GetErrorCode(parser);
+    XML_ParserFree(parser);
+
+    if (status == XML_STATUS_OK) {
+      assert_true(error == XML_ERROR_NONE);
+      assert_true(data.callCount == 1);
+      assert_true(data.copiedCharCount == ENTITY_LENGTH);
+      break;
+    }
+
+    observedReallocationFailure = true;
+    assert_true(error == XML_ERROR_NO_MEMORY);
+    assert_true(data.callCount == 0);
+  }
+
+  g_allocation_count = ALLOC_ALWAYS_SUCCEED;
+  g_reallocation_count = REALLOC_ALWAYS_SUCCEED;
+  assert_true(observedReallocationFailure);
+  assert_true(tracking_report());
+}
+END_TEST
+
+typedef struct {
+  CharacterBufferLifecycleData base;
+  const XML_Char *parentPointerBeforeEntity;
+  const XML_Char *childPointer;
+  int externalEntityCalls;
+} ExternalEntityBufferData;
+
+static int XMLCALL
+lifecycle_external_entity_handler(XML_Parser parent, const XML_Char *context,
+                                  const XML_Char *base,
+                                  const XML_Char *systemId,
+                                  const XML_Char *publicId) {
+  ExternalEntityBufferData *const data = XML_GetUserData(parent);
+  char childDocument[128];
+  size_t childDocumentLength = 0;
+  append_utf16le(childDocument, &childDocumentLength,
+                 "<?xml version='1.0' encoding='utf-16'?><r>child</r>");
+
+  UNUSED_P(base);
+  UNUSED_P(systemId);
+  UNUSED_P(publicId);
+
+  data->externalEntityCalls++;
+  XML_Parser child = XML_ExternalEntityParserCreate(parent, context, NULL);
+  assert_true(child != NULL);
+
+  assert_true(XML_Parse(child, childDocument, (int)childDocumentLength,
+                        /*isFinal=*/XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(XML_GetErrorCode(child) == XML_ERROR_NONE);
+  data->childPointer = data->base.lastCallbackPointer;
+
+  XML_ParserFree(child);
+  return XML_STATUS_OK;
+}
+
+static void XMLCALL
+lifecycle_parent_character_handler(void *userData, const XML_Char *s,
+                                   int len) {
+  ExternalEntityBufferData *const data = userData;
+  character_buffer_lifecycle_handler(&data->base, s, len);
+  if (data->base.callCount == 1)
+    data->parentPointerBeforeEntity = s;
+}
+
+START_TEST(test_misc_character_buffer_external_entity_lifetime) {
+  const char *const document =
+      "<!DOCTYPE r [<!ENTITY e SYSTEM 'child.xml'>]><r>parent&e;end</r>";
+  ExternalEntityBufferData data = {0};
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  XML_SetUserData(parser, &data);
+  XML_SetCharacterDataHandler(parser, lifecycle_parent_character_handler);
+  XML_SetExternalEntityRefHandler(parser, lifecycle_external_entity_handler);
+
+  assert_true(XML_Parse(parser, document, (int)strlen(document),
+                        /*isFinal=*/XML_TRUE)
+              == XML_STATUS_OK);
+  assert_true(XML_GetErrorCode(parser) == XML_ERROR_NONE);
+  assert_true(data.externalEntityCalls == 1);
+  assert_true(data.base.copiedCharCount == 14);
+  assert_true(data.base.callCount >= 3);
+  assert_true(memcmp(data.base.copied, XCS("parent"),
+                     6 * sizeof(XML_Char))
+              == 0);
+  assert_true(memcmp(data.base.copied + 6, XCS("child"),
+                     5 * sizeof(XML_Char))
+              == 0);
+  assert_true(memcmp(data.base.copied + 11, XCS("end"),
+                     3 * sizeof(XML_Char))
+              == 0);
+  assert_true(data.parentPointerBeforeEntity != NULL);
+  assert_true(data.childPointer != NULL);
+  assert_true(data.childPointer != data.parentPointerBeforeEntity);
+
+  XML_ParserFree(parser);
+#ifdef EXPAT_TESTS_ADDRESS_SANITIZER
+  // The child's converted callback buffer is owned by the child parser and
+  // must be unavailable once that parser has been released.
+  assert_true(__asan_address_is_poisoned(data.childPointer));
+#endif
+}
+END_TEST
+#endif /* XML_DTD */
+
+START_TEST(test_misc_caller_retained_input_buffer_is_not_guaranteed) {
+  XML_Parser parser = XML_ParserCreate(NULL);
+  assert_true(parser != NULL);
+
+  char *const originalBuffer = XML_GetBuffer(parser, 1);
+  assert_true(originalBuffer != NULL);
+  memcpy(originalBuffer, "<r/>", 4);
+  assert_true(XML_ParseBuffer(parser, 4, /*isFinal=*/XML_FALSE)
+              == XML_STATUS_OK);
+
+  // Growing the application input buffer owns the replacement decision.  An
+  // application that kept the old address must not use it after this call.
+  char *const grownBuffer = XML_GetBuffer(parser, 2048);
+  assert_true(grownBuffer != NULL);
+  assert_true(grownBuffer != originalBuffer);
+#ifdef EXPAT_TESTS_ADDRESS_SANITIZER
+  assert_true(__asan_address_is_poisoned(originalBuffer));
+#endif
+
+  XML_ParserFree(parser);
+}
+END_TEST
+
 START_TEST(test_misc_getinputcontext_from_handlers_only) {
   // Speed up the test, chunk size expected to not matter in this test
   if (g_chunkSize != 0)
@@ -1342,5 +1826,19 @@ make_miscellaneous_test_case(Suite *s) {
   tcase_add_test(tc_misc, test_misc_storeatts_attssize_allocation);
   tcase_add_test(tc_misc, test_misc_start_doctype_decl_handler_reset);
   tcase_add_test(tc_misc, test_misc_empty_nonfinal_subparser_parse);
+  tcase_add_test(tc_misc,
+                 test_misc_character_buffer_empty_and_chunked_encoding);
+  tcase_add_test(
+      tc_misc, test_misc_character_buffer_pool_growth_and_handler_switch);
+  tcase_add_test(tc_misc,
+                 test_misc_character_buffer_suspend_resume_lifetime);
+#ifdef XML_DTD
+  tcase_add_test(tc_misc, test_misc_character_buffer_external_entity_lifetime);
+  tcase_add_test(tc_misc,
+                 test_misc_external_entity_oom_error_and_callback_counts);
+  tcase_add_test(tc_misc, test_misc_character_buffer_realloc_failure);
+#endif /* XML_DTD */
+  tcase_add_test(tc_misc,
+                 test_misc_caller_retained_input_buffer_is_not_guaranteed);
   tcase_add_test(tc_misc, test_misc_getinputcontext_from_handlers_only);
 }

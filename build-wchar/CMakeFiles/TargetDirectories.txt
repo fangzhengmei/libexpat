@@ -1,0 +1,12 @@
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/expat.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/runtests.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/benchmark.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/package.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/package_source.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/test.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/edit_cache.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/rebuild_cache.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/list_install_components.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/install.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/install/local.dir
+/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build-wchar/CMakeFiles/install/strip.dir

@@ -1,0 +1,1 @@
+/usr/bin/cc   -Wstrict-aliasing=3 -Wimplicit-fallthrough -fvisibility=hidden -g CMakeFiles/benchmark.dir/tests/benchmark/benchmark.c.o -o tests/benchmark/benchmark  libexpat.a -lm 

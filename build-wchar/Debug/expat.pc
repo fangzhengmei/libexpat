@@ -1,0 +1,13 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: expatw
+Version: 2.10.0
+Description: expat XML parser
+URL: https://libexpat.github.io/
+Libs: -L${libdir} -lexpatw
+Libs.private: -lm
+Cflags: -I${includedir}
+Cflags.private: -DXML_STATIC

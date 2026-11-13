@@ -1,0 +1,20 @@
+Start testing: Nov 13 03:27 UTC
+----------------------------------------------------------
+1/1 Testing: runtests
+1/1 Test: runtests
+Command: "/usr/bin/bash" "run.sh" "/srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build/tests/runtests"
+Directory: /srv/fb2/fangzhengmei/0018-libexpat-9-a10e946b/build
+"runtests" start time: Nov 13 03:27 UTC
+Output:
+----------------------------------------------------------
+Expat version: expat_2.10.0
+100%: Checks: 5496, Failed: 0
+<end of output>
+Test time =  18.51 sec
+----------------------------------------------------------
+Test Passed.
+"runtests" end time: Nov 13 03:27 UTC
+"runtests" time elapsed: 00:00:18
+----------------------------------------------------------
+
+End testing: Nov 13 03:27 UTC
